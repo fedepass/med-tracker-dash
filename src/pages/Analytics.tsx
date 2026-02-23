@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 import { it } from "date-fns/locale";
-import { CalendarIcon, TrendingUp, BarChart3, Users, AlertTriangle, CheckCircle2, Clock, Loader2, XCircle } from "lucide-react";
+import { CalendarIcon, TrendingUp, BarChart3, Monitor, AlertTriangle, CheckCircle2, Clock, Loader2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -77,10 +77,10 @@ const Analytics = () => {
     }));
   }, [filtered]);
 
-  const executorData = useMemo(() => {
+  const stationData = useMemo(() => {
     const map: Record<string, { total: number; completed: number; errors: number }> = {};
     filtered.forEach((p) => {
-      const name = p.executor || "Non assegnato";
+      const name = p.station || "Non assegnata";
       if (!map[name]) map[name] = { total: 0, completed: 0, errors: 0 };
       map[name].total++;
       if (p.status === "completata" || p.status === "validata") map[name].completed++;
@@ -240,12 +240,12 @@ const Analytics = () => {
           <Card className="shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" /> Performance Operatori
+                <Monitor className="h-4 w-4 text-primary" /> Performance Postazioni
               </CardTitle>
             </CardHeader>
             <CardContent className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={executorData} layout="vertical" margin={{ left: 20 }}>
+                <BarChart data={stationData} layout="vertical" margin={{ left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fontSize: 12 }} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} width={100} />
