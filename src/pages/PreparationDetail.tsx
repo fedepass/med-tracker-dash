@@ -59,13 +59,17 @@ const PreparationDetail = () => {
       <Navbar />
       <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
         {/* Back + Header */}
-        <div className="mb-6">
-          <button onClick={() => navigate("/")} className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
+        <div className="mb-4">
+          <button onClick={() => navigate("/")} className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Torna alla Dashboard
           </button>
+        </div>
+
+        {/* Sticky header with info + actions */}
+        <div className="sticky top-0 z-20 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${sc.bgClassName} ${sc.className}`}>
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${sc.bgClassName} ${sc.className}`}>
                 {sc.icon}
               </div>
               <div>
