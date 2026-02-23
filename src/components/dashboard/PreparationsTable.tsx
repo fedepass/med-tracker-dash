@@ -171,7 +171,7 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
                 <span className="inline-flex items-center gap-1">ID / Stato <SortIcon col="status" /></span>
               </th>
               <th className={thClass} onClick={() => toggleSort("drug")}>
-                <span className="inline-flex items-center gap-1">Farmaco <SortIcon col="drug" /></span>
+                <span className="inline-flex items-center gap-1">Richiesta <SortIcon col="drug" /></span>
               </th>
               <th className={thClass} onClick={() => toggleSort("dispensed")}>
                 <span className="inline-flex items-center gap-1">Quantità <SortIcon col="dispensed" /></span>
@@ -209,7 +209,7 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
                   </td>
                   <td className="px-4 py-4">
                     <p className="font-medium text-foreground">{p.drug}</p>
-                    <p className="text-xs text-muted-foreground">{p.form} · {p.container}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{p.container}</p>
                   </td>
                   <td className="px-4 py-4">
                     <p className="mb-1 text-sm font-medium text-foreground">
