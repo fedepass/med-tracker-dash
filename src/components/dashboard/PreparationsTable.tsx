@@ -1,38 +1,12 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { preparations, type Status, type Priority } from "@/data/preparations";
 
-type Status = "completata" | "esecuzione" | "errore" | "attesa";
-type Priority = "alta" | "media" | "bassa";
-
-interface Preparation {
-  id: string;
-  status: Status;
-  priority: Priority;
-  drug: string;
-  form: string;
-  container: string;
-  dispensed: number;
-  target: number;
-  errorRate: number;
-  executor: string | null;
-  executorInitials: string | null;
-  station: string | null;
-  requestedAt: string;
-  startedAt: string | null;
-  finishedAt: string | null;
-}
-
-const preparations: Preparation[] = [
-  { id: "RX-2847", status: "completata", priority: "alta", drug: "Paracetamolo 500mg", form: "Capsula", container: "Contenitore B12", dispensed: 45.2, target: 45.0, errorRate: 0.4, executor: "L. Bianchi", executorInitials: "LB", station: "Post. 1", requestedAt: "08:30", startedAt: "08:45", finishedAt: "09:12" },
-  { id: "RX-2846", status: "esecuzione", priority: "media", drug: "Ibuprofene 400mg", form: "Compressa", container: "Contenitore A5", dispensed: 28.5, target: 30.0, errorRate: 0, executor: "M. Verdi", executorInitials: "MV", station: "Post. 2", requestedAt: "09:15", startedAt: "09:30", finishedAt: null },
-  { id: "RX-2845", status: "errore", priority: "alta", drug: "Amoxicillina 875mg", form: "Capsula", container: "Contenitore C3", dispensed: 52.8, target: 50.0, errorRate: 5.6, executor: "G. Neri", executorInitials: "GN", station: "Post. 3", requestedAt: "08:00", startedAt: "08:20", finishedAt: "08:45" },
-  { id: "RX-2844", status: "attesa", priority: "bassa", drug: "Omeprazolo 20mg", form: "Capsula", container: "Contenitore D7", dispensed: 0, target: 35.0, errorRate: 0, executor: null, executorInitials: null, station: null, requestedAt: "10:00", startedAt: null, finishedAt: null },
-  { id: "RX-2843", status: "completata", priority: "media", drug: "Metformina 850mg", form: "Compressa", container: "Contenitore E2", dispensed: 42.5, target: 42.5, errorRate: 0.0, executor: "L. Bianchi", executorInitials: "LB", station: "Post. 1", requestedAt: "07:45", startedAt: "08:00", finishedAt: "08:28" },
-];
 
 const statusConfig: Record<Status, { icon: React.ReactNode; label: string; className: string }> = {
   completata: { icon: <CheckCircle2 className="h-4 w-4" />, label: "Completata", className: "text-status-complete" },
@@ -54,6 +28,7 @@ const priorityOrder: Record<Priority, number> = { alta: 0, media: 1, bassa: 2 };
 const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3 };
 
 const PreparationsTable = () => {
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -268,7 +243,7 @@ const PreparationsTable = () => {
                       <button className="rounded-md p-1.5 text-status-error transition-colors hover:bg-status-error-bg" title="Rifiuta">
                         <X className="h-4 w-4" />
                       </button>
-                      <button className="rounded-md p-1.5 text-status-waiting transition-colors hover:bg-status-waiting-bg" title="Dettagli">
+                      <button onClick={() => navigate(`/preparation/${p.id}`)} className="rounded-md p-1.5 text-primary transition-colors hover:bg-primary/10" title="Dettagli">
                         <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>
