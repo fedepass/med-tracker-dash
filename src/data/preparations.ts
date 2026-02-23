@@ -1,3 +1,8 @@
+import photoFarmaco from "@/assets/photo-farmaco.jpg";
+import photoDiluente from "@/assets/photo-diluente.jpg";
+import photoContenitore from "@/assets/photo-contenitore.jpg";
+import photoPreparazione from "@/assets/photo-preparazione.jpg";
+
 export type Status = "completata" | "esecuzione" | "errore" | "attesa";
 export type Priority = "alta" | "media" | "bassa";
 
@@ -68,10 +73,10 @@ export const preparations: Preparation[] = [
     startedAt: "08:45",
     finishedAt: "09:12",
     photos: [
-      { type: "farmaco", label: "Paracetamolo 500mg - Riconoscimento", url: "/placeholder.svg", barcode: "8012345678901" },
-      { type: "diluente", label: "Soluzione Fisiologica NaCl 0.9%", url: "/placeholder.svg", barcode: "8098765432101" },
-      { type: "contenitore", label: "Contenitore B12 - Sacca 250ml", url: "/placeholder.svg" },
-      { type: "preparazione", label: "Preparazione Finale", url: "/placeholder.svg" },
+      { type: "farmaco", label: "Paracetamolo 500mg - Riconoscimento", url: photoFarmaco, barcode: "8012345678901" },
+      { type: "diluente", label: "Soluzione Fisiologica NaCl 0.9%", url: photoDiluente, barcode: "8098765432101" },
+      { type: "contenitore", label: "Contenitore B12 - Sacca 250ml", url: photoContenitore },
+      { type: "preparazione", label: "Preparazione Finale", url: photoPreparazione },
     ],
     supplementaryDoses: [
       { time: "08:55", amount: 0.2, unit: "g", reason: "Compensazione perdita trasferimento" },
@@ -107,8 +112,8 @@ export const preparations: Preparation[] = [
     startedAt: "09:30",
     finishedAt: null,
     photos: [
-      { type: "farmaco", label: "Ibuprofene 400mg - Riconoscimento", url: "/placeholder.svg", barcode: "8011122233344" },
-      { type: "contenitore", label: "Contenitore A5 - Flacone", url: "/placeholder.svg" },
+      { type: "farmaco", label: "Ibuprofene 400mg - Riconoscimento", url: photoFarmaco, barcode: "8011122233344" },
+      { type: "contenitore", label: "Contenitore A5 - Flacone", url: photoContenitore },
     ],
     supplementaryDoses: [],
     labelData: {
@@ -142,10 +147,10 @@ export const preparations: Preparation[] = [
     startedAt: "08:20",
     finishedAt: "08:45",
     photos: [
-      { type: "farmaco", label: "Amoxicillina 875mg - Riconoscimento", url: "/placeholder.svg", barcode: "8055566677788" },
-      { type: "diluente", label: "Acqua per preparazioni iniettabili", url: "/placeholder.svg", barcode: "8099988877766" },
-      { type: "contenitore", label: "Contenitore C3 - Siringa 50ml", url: "/placeholder.svg" },
-      { type: "preparazione", label: "Preparazione Finale - ERRORE", url: "/placeholder.svg" },
+      { type: "farmaco", label: "Amoxicillina 875mg - Riconoscimento", url: photoFarmaco, barcode: "8055566677788" },
+      { type: "diluente", label: "Acqua per preparazioni iniettabili", url: photoDiluente, barcode: "8099988877766" },
+      { type: "contenitore", label: "Contenitore C3 - Siringa 50ml", url: photoContenitore },
+      { type: "preparazione", label: "Preparazione Finale - ERRORE", url: photoPreparazione },
     ],
     supplementaryDoses: [
       { time: "08:30", amount: 1.5, unit: "g", reason: "Primo aggiustamento dosaggio" },
@@ -214,9 +219,9 @@ export const preparations: Preparation[] = [
     startedAt: "08:00",
     finishedAt: "08:28",
     photos: [
-      { type: "farmaco", label: "Metformina 850mg - Riconoscimento", url: "/placeholder.svg", barcode: "8033344455566" },
-      { type: "contenitore", label: "Contenitore E2 - Blister", url: "/placeholder.svg" },
-      { type: "preparazione", label: "Preparazione Finale", url: "/placeholder.svg" },
+      { type: "farmaco", label: "Metformina 850mg - Riconoscimento", url: photoFarmaco, barcode: "8033344455566" },
+      { type: "contenitore", label: "Contenitore E2 - Blister", url: photoContenitore },
+      { type: "preparazione", label: "Preparazione Finale", url: photoPreparazione },
     ],
     supplementaryDoses: [],
     labelData: {
