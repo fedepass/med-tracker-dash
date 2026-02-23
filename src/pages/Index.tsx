@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2, X, ShieldCheck, ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import Navbar from "@/components/dashboard/Navbar";
 import StatCards from "@/components/dashboard/StatCards";
 import PreparationsTable from "@/components/dashboard/PreparationsTable";
@@ -8,6 +9,7 @@ import type { Status } from "@/data/preparations";
 
 const Index = () => {
   const [statusFilter, setStatusFilter] = useState<Status | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -19,15 +21,31 @@ const Index = () => {
             <h1 className="text-2xl font-bold text-foreground">Dashboard Preparazioni</h1>
             <p className="text-sm text-muted-foreground">Supervisione e validazione delle preparazioni farmaceutiche</p>
           </div>
-          <div className="flex gap-2">
-            <Button className="gap-2 bg-status-complete text-primary-foreground hover:bg-status-complete/90">
-              <CheckCircle2 className="h-4 w-4" />
-              Valida Selezionate
-            </Button>
-            <Button variant="destructive" className="gap-2">
-              <X className="h-4 w-4" />
-              Rifiuta Selezionate
-            </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch checked={showArchived} onCheckedChange={setShowArchived} />
+              <span className="text-sm text-muted-foreground">Mostra validate/rifiutate</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setStatusFilter(statusFilter === "validata" ? null : "validata")}
+              >
+                <ShieldCheck className="h-4 w-4 text-status-complete" />
+                Validate
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setStatusFilter(statusFilter === "rifiutata" ? null : "rifiutata")}
+              >
+                <ShieldX className="h-4 w-4 text-status-error" />
+                Rifiutate
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -37,7 +55,7 @@ const Index = () => {
         </div>
 
         {/* Table */}
-        <PreparationsTable statusFilter={statusFilter} />
+        <PreparationsTable statusFilter={statusFilter} showArchived={showArchived} />
       </main>
     </div>
   );

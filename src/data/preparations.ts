@@ -3,7 +3,7 @@ import photoDiluente from "@/assets/photo-diluente.jpg";
 import photoContenitore from "@/assets/photo-contenitore.jpg";
 import photoPreparazione from "@/assets/photo-preparazione.jpg";
 
-export type Status = "completata" | "esecuzione" | "errore" | "attesa";
+export type Status = "completata" | "esecuzione" | "errore" | "attesa" | "validata" | "rifiutata";
 export type Priority = "alta" | "media" | "bassa";
 
 export interface ComponentPhoto {
