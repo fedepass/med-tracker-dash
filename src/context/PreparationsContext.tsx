@@ -89,12 +89,15 @@ function generatePreparation(counter: number): Preparation {
   const barcode = `80${String(Math.floor(Math.random() * 1e10)).padStart(11, "0")}`;
 
   const isIV = d.prepType === "infusione_iv";
-  const photos = [
+  const allPhotos = [
     { type: "farmaco" as const, label: `${d.drug} - Flacone polvere liofilizzata`, url: photoAssets.flaconePolvere, barcode },
     { type: "diluente" as const, label: d.diluent, url: photoAssets.diluente, barcode: `80${barcode.slice(2)}` },
     { type: "contenitore" as const, label: isIV ? "Sacca IV per infusione" : "Siringa sterile per preparazione", url: isIV ? photoAssets.saccaIV : photoAssets.siringa },
     { type: "preparazione" as const, label: isIV ? "Preparazione finale - Sacca IV pronta" : "Preparazione finale - Siringa pronta", url: photoAssets.preparazioneFinale },
   ];
+
+  // Photos based on status: attesa=none, esecuzione=first 2, completata/errore=all
+  const photos = status === "attesa" ? [] : status === "esecuzione" ? allPhotos.slice(0, 2) : allPhotos;
 
   return {
     id: `RX-${3000 + counter}`,
@@ -113,7 +116,7 @@ function generatePreparation(counter: number): Preparation {
     requestedAt,
     startedAt,
     finishedAt,
-    photos: status === "attesa" ? [] : photos,
+    photos,
     supplementaryDoses: [],
     labelData: {
       patientName: patient.name,

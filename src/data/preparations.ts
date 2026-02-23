@@ -139,7 +139,7 @@ export const preparations: Preparation[] = [
     requestedAt: "09:15",
     startedAt: "09:30",
     finishedAt: null,
-    photos: syringePhotos("Vancomicina 1g", "Acqua per preparazioni iniettabili 20ml", "8011122233344"),
+    photos: syringePhotos("Vancomicina 1g", "Acqua per preparazioni iniettabili 20ml", "8011122233344").slice(0, 2),
     supplementaryDoses: [],
     labelData: {
       patientName: "Anna Verdi",
@@ -307,7 +307,7 @@ export const preparations: Preparation[] = [
     requestedAt: "09:00",
     startedAt: "09:15",
     finishedAt: null,
-    photos: ivPhotos("Amoxicillina/Ac. Clavulanico 2.2g", "Soluzione Fisiologica NaCl 0.9% 100ml", "8066677788899"),
+    photos: ivPhotos("Amoxicillina/Ac. Clavulanico 2.2g", "Soluzione Fisiologica NaCl 0.9% 100ml", "8066677788899").slice(0, 2),
     supplementaryDoses: [],
     labelData: {
       patientName: "Roberto Colombo",
