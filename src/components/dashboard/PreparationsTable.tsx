@@ -127,6 +127,27 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
           </span>
         </div>
         <div className="flex items-center gap-3">
+          {selected.size > 0 && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  selected.forEach((id) => validatePreparation(id));
+                  setSelected(new Set());
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md bg-status-complete px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-status-complete/90"
+              >
+                <Check className="h-3.5 w-3.5" />
+                Valida ({selected.size})
+              </button>
+              <button
+                onClick={() => { setRejectTargetIds(Array.from(selected)); setRejectDialogOpen(true); }}
+                className="inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+              >
+                <X className="h-3.5 w-3.5" />
+                Rifiuta ({selected.size})
+              </button>
+            </div>
+          )}
           <span className="text-sm text-muted-foreground">{selected.size} selezionate</span>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
