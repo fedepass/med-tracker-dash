@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight, Eye } from "lucide-react";
+import { useState, useMemo } from "react";
+import { CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 
 type Status = "completata" | "esecuzione" | "errore" | "attesa";
 type Priority = "alta" | "media" | "bassa";
@@ -47,8 +47,58 @@ const priorityConfig: Record<Priority, { label: string; className: string }> = {
   bassa: { label: "Priorità Bassa", className: "bg-status-complete-bg text-status-complete" },
 };
 
+type SortKey = "id" | "status" | "drug" | "dispensed" | "errorRate" | "executor" | "requestedAt";
+type SortDir = "asc" | "desc";
+
+const priorityOrder: Record<Priority, number> = { alta: 0, media: 1, bassa: 2 };
+const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3 };
+
 const PreparationsTable = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
+  };
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return preparations;
+    const q = search.toLowerCase();
+    return preparations.filter((p) =>
+      [p.id, p.drug, p.form, p.container, p.executor, p.station, p.status, p.priority, p.requestedAt, p.startedAt, p.finishedAt, String(p.errorRate), `${p.dispensed}`, `${p.target}`]
+        .filter(Boolean)
+        .some((v) => v!.toLowerCase().includes(q))
+    );
+  }, [search]);
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case "id": cmp = a.id.localeCompare(b.id); break;
+        case "status": cmp = statusOrder[a.status] - statusOrder[b.status] || priorityOrder[a.priority] - priorityOrder[b.priority]; break;
+        case "drug": cmp = a.drug.localeCompare(b.drug); break;
+        case "dispensed": cmp = (a.dispensed / a.target) - (b.dispensed / b.target); break;
+        case "errorRate": cmp = a.errorRate - b.errorRate; break;
+        case "executor": cmp = (a.executor ?? "").localeCompare(b.executor ?? ""); break;
+        case "requestedAt": cmp = a.requestedAt.localeCompare(b.requestedAt); break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, sortKey, sortDir]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -59,7 +109,7 @@ const PreparationsTable = () => {
   };
 
   const toggleAll = () => {
-    setSelected((prev) => (prev.size === preparations.length ? new Set() : new Set(preparations.map((p) => p.id))));
+    setSelected((prev) => (prev.size === sorted.length ? new Set() : new Set(sorted.map((p) => p.id))));
   };
 
   const progressPercent = (dispensed: number, target: number) => Math.min((dispensed / target) * 100, 100);
@@ -71,20 +121,33 @@ const PreparationsTable = () => {
     return "bg-muted-foreground";
   };
 
+  const thClass = "px-4 py-3 cursor-pointer select-none hover:text-foreground transition-colors";
+
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
-      {/* Header */}
+      {/* Header with search */}
       <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Checkbox
-            checked={selected.size === preparations.length && preparations.length > 0}
+            checked={selected.size === sorted.length && sorted.length > 0}
             onCheckedChange={toggleAll}
           />
           <span className="text-sm text-muted-foreground">
-            Seleziona tutto ({preparations.length} preparazioni)
+            Seleziona tutto ({sorted.length} preparazioni)
           </span>
         </div>
-        <span className="text-sm text-muted-foreground">{selected.size} selezionate</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">{selected.size} selezionate</span>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Cerca..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 w-48 bg-secondary pl-8"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Table */}
@@ -93,17 +156,29 @@ const PreparationsTable = () => {
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
               <th className="w-10 px-5 py-3" />
-              <th className="px-4 py-3">ID / Stato</th>
-              <th className="px-4 py-3">Farmaco</th>
-              <th className="px-4 py-3">Quantità</th>
-              <th className="px-4 py-3">Errore %</th>
-              <th className="px-4 py-3">Esecutore</th>
-              <th className="px-4 py-3">Tempistiche</th>
+              <th className={thClass} onClick={() => toggleSort("status")}>
+                <span className="inline-flex items-center gap-1">ID / Stato <SortIcon col="status" /></span>
+              </th>
+              <th className={thClass} onClick={() => toggleSort("drug")}>
+                <span className="inline-flex items-center gap-1">Farmaco <SortIcon col="drug" /></span>
+              </th>
+              <th className={thClass} onClick={() => toggleSort("dispensed")}>
+                <span className="inline-flex items-center gap-1">Quantità <SortIcon col="dispensed" /></span>
+              </th>
+              <th className={thClass} onClick={() => toggleSort("errorRate")}>
+                <span className="inline-flex items-center gap-1">Errore % <SortIcon col="errorRate" /></span>
+              </th>
+              <th className={thClass} onClick={() => toggleSort("executor")}>
+                <span className="inline-flex items-center gap-1">Esecutore <SortIcon col="executor" /></span>
+              </th>
+              <th className={thClass} onClick={() => toggleSort("requestedAt")}>
+                <span className="inline-flex items-center gap-1">Tempistiche <SortIcon col="requestedAt" /></span>
+              </th>
               <th className="px-4 py-3">Azioni</th>
             </tr>
           </thead>
           <tbody>
-            {preparations.map((p) => {
+            {sorted.map((p) => {
               const sc = statusConfig[p.status];
               const pc = priorityConfig[p.priority];
               return (
@@ -207,7 +282,7 @@ const PreparationsTable = () => {
 
       {/* Footer */}
       <div className="flex flex-col items-center justify-between gap-3 border-t border-border px-5 py-3 sm:flex-row">
-        <p className="text-xs text-muted-foreground">Mostrando 5 di 32 preparazioni</p>
+        <p className="text-xs text-muted-foreground">Mostrando {sorted.length} di 32 preparazioni</p>
         <div className="flex items-center gap-1">
           <button className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary">Precedente</button>
           <button className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">1</button>

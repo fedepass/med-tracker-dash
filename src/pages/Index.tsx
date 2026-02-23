@@ -2,7 +2,6 @@ import { CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/dashboard/Navbar";
 import StatCards from "@/components/dashboard/StatCards";
-import FiltersBar from "@/components/dashboard/FiltersBar";
 import PreparationsTable from "@/components/dashboard/PreparationsTable";
 
 const Index = () => {
@@ -31,11 +30,6 @@ const Index = () => {
         {/* Stats */}
         <div className="mb-6">
           <StatCards />
-        </div>
-
-        {/* Filters */}
-        <div className="mb-6">
-          <FiltersBar />
         </div>
 
         {/* Table */}
