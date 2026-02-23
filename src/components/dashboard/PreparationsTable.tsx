@@ -190,7 +190,7 @@ const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusF
                 <span className="inline-flex items-center gap-1">Errore % <SortIcon col="errorRate" /></span>
               </th>
               <th className={thClass} onClick={() => toggleSort("executor")}>
-                <span className="inline-flex items-center gap-1">Esecutore <SortIcon col="executor" /></span>
+                <span className="inline-flex items-center gap-1">Postazione <SortIcon col="executor" /></span>
               </th>
               <th className={thClass} onClick={() => toggleSort("requestedAt")}>
                 <span className="inline-flex items-center gap-1">Tempistiche <SortIcon col="requestedAt" /></span>
@@ -242,18 +242,8 @@ const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusF
                     )}
                   </td>
                   <td className="px-4 py-4">
-                    {p.executor ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-secondary text-xs font-medium text-foreground">
-                            {p.executorInitials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{p.station}</p>
-                          <p className="text-xs text-muted-foreground">{p.executor}</p>
-                        </div>
-                      </div>
+                    {p.station ? (
+                      <p className="text-sm font-medium text-foreground">{p.station}</p>
                     ) : (
                       <span className="text-xs text-muted-foreground italic">Non assegnata</span>
                     )}
