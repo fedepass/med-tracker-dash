@@ -30,7 +30,7 @@ type SortDir = "asc" | "desc";
 const priorityOrder: Record<Priority, number> = { alta: 0, media: 1, bassa: 2 };
 const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3, validata: 4, rifiutata: 5 };
 
-const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Status | null; showArchived?: boolean }) => {
+const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusFilter?: Status | null; showArchived?: boolean; dateFilter?: string }) => {
   const navigate = useNavigate();
   const { preparations, validatePreparation, rejectPreparation } = usePreparations();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -58,6 +58,10 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
 
   const filtered = useMemo(() => {
     let data = preparations;
+    // Date filter
+    if (dateFilter) {
+      data = data.filter((p) => p.date === dateFilter);
+    }
     // Hide validated/rejected unless explicitly filtering or showArchived
     if (statusFilter === "validata" || statusFilter === "rifiutata") {
       data = data.filter((p) => p.status === statusFilter);
@@ -73,7 +77,7 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(q))
     );
-  }, [search, statusFilter, preparations, showArchived]);
+  }, [search, statusFilter, preparations, showArchived, dateFilter]);
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;

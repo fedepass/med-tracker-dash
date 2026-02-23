@@ -51,6 +51,7 @@ export interface Preparation {
   executor: string | null;
   executorInitials: string | null;
   station: string | null;
+  date: string; // YYYY-MM-DD
   requestedAt: string;
   startedAt: string | null;
   finishedAt: string | null;
@@ -86,6 +87,11 @@ function syringePhotos(drug: string, diluent: string, barcode: string): Componen
   ];
 }
 
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 export const preparations: Preparation[] = [
   {
     id: "RX-2847",
@@ -101,6 +107,7 @@ export const preparations: Preparation[] = [
     executor: "L. Bianchi",
     executorInitials: "LB",
     station: "Cappa 1",
+    date: todayStr(),
     requestedAt: "08:30",
     startedAt: "08:45",
     finishedAt: "09:12",
@@ -136,6 +143,7 @@ export const preparations: Preparation[] = [
     executor: "M. Verdi",
     executorInitials: "MV",
     station: "Cappa 2",
+    date: todayStr(),
     requestedAt: "09:15",
     startedAt: "09:30",
     finishedAt: null,
@@ -169,6 +177,7 @@ export const preparations: Preparation[] = [
     executor: "G. Neri",
     executorInitials: "GN",
     station: "Cappa 3",
+    date: todayStr(),
     requestedAt: "08:00",
     startedAt: "08:20",
     finishedAt: "08:45",
@@ -205,6 +214,7 @@ export const preparations: Preparation[] = [
     executor: null,
     executorInitials: null,
     station: null,
+    date: todayStr(),
     requestedAt: "10:00",
     startedAt: null,
     finishedAt: null,
@@ -238,6 +248,7 @@ export const preparations: Preparation[] = [
     executor: "L. Bianchi",
     executorInitials: "LB",
     station: "Cappa 1",
+    date: todayStr(),
     requestedAt: "07:45",
     startedAt: "08:00",
     finishedAt: "08:28",
@@ -271,6 +282,7 @@ export const preparations: Preparation[] = [
     executor: "S. Ferrari",
     executorInitials: "SF",
     station: "Cappa 2",
+    date: todayStr(),
     requestedAt: "07:30",
     startedAt: "07:40",
     finishedAt: "07:55",
@@ -304,6 +316,7 @@ export const preparations: Preparation[] = [
     executor: "G. Neri",
     executorInitials: "GN",
     station: "Cappa 3",
+    date: todayStr(),
     requestedAt: "09:00",
     startedAt: "09:15",
     finishedAt: null,
@@ -337,6 +350,7 @@ export const preparations: Preparation[] = [
     executor: null,
     executorInitials: null,
     station: null,
+    date: todayStr(),
     requestedAt: "10:30",
     startedAt: null,
     finishedAt: null,
@@ -370,6 +384,7 @@ export const preparations: Preparation[] = [
     executor: "M. Verdi",
     executorInitials: "MV",
     station: "Cappa 2",
+    date: todayStr(),
     requestedAt: "08:15",
     startedAt: "08:20",
     finishedAt: "08:30",
@@ -403,6 +418,7 @@ export const preparations: Preparation[] = [
     executor: "S. Ferrari",
     executorInitials: "SF",
     station: "Cappa 1",
+    date: todayStr(),
     requestedAt: "08:45",
     startedAt: "09:00",
     finishedAt: "09:25",
