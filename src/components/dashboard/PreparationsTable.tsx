@@ -39,6 +39,8 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTargetIds, setRejectTargetIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -90,6 +92,13 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
     });
   }, [filtered, sortKey, sortDir]);
 
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedData = useMemo(() => {
+    const start = (safeCurrentPage - 1) * pageSize;
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, safeCurrentPage, pageSize]);
+
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -99,7 +108,7 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
   };
 
   const toggleAll = () => {
-    setSelected((prev) => (prev.size === sorted.length ? new Set() : new Set(sorted.map((p) => p.id))));
+    setSelected((prev) => (prev.size === paginatedData.length ? new Set() : new Set(paginatedData.map((p) => p.id))));
   };
 
   const progressPercent = (dispensed: number, target: number) => Math.min((dispensed / target) * 100, 100);
@@ -119,11 +128,11 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
       <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Checkbox
-            checked={selected.size === sorted.length && sorted.length > 0}
+            checked={selected.size === paginatedData.length && paginatedData.length > 0}
             onCheckedChange={toggleAll}
           />
           <span className="text-sm text-muted-foreground">
-            Seleziona tutto ({sorted.length} preparazioni)
+            Seleziona pagina ({paginatedData.length} di {sorted.length})
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -180,7 +189,7 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
             </tr>
           </thead>
           <tbody>
-            {sorted.map((p) => {
+            {paginatedData.map((p) => {
               const sc = statusConfig[p.status];
               const pc = priorityConfig[p.priority];
               return (
@@ -303,13 +312,37 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
 
       {/* Footer */}
       <div className="flex flex-col items-center justify-between gap-3 border-t border-border px-5 py-3 sm:flex-row">
-        <p className="text-xs text-muted-foreground">Mostrando {sorted.length} di 32 preparazioni</p>
+        <p className="text-xs text-muted-foreground">
+          Mostrando {(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, sorted.length)} di {sorted.length} preparazioni
+        </p>
         <div className="flex items-center gap-1">
-          <button className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary">Precedente</button>
-          <button className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">1</button>
-          <button className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary">2</button>
-          <button className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary">3</button>
-          <button className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary">Successivo</button>
+          <button
+            disabled={safeCurrentPage <= 1}
+            onClick={() => { setCurrentPage((p) => p - 1); setSelected(new Set()); }}
+            className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-40"
+          >
+            Precedente
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => { setCurrentPage(page); setSelected(new Set()); }}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                page === safeCurrentPage
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            disabled={safeCurrentPage >= totalPages}
+            onClick={() => { setCurrentPage((p) => p + 1); setSelected(new Set()); }}
+            className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-40"
+          >
+            Successivo
+          </button>
         </div>
       </div>
 
