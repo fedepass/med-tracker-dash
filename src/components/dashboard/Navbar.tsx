@@ -1,16 +1,44 @@
-import { Search, Bell, Barcode } from "lucide-react";
+import { Search, Bell, Barcode, BarChart3, Home } from "lucide-react";
+import { useLocation, Link } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 const Navbar = () => {
+  const location = useLocation();
+  const isAnalytics = location.pathname === "/analytics";
+  const isHome = location.pathname === "/";
+
   return (
     <header className="sticky top-0 z-50 border-b border-navbar-border bg-navbar">
       <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-6">
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <span className="text-sm font-bold text-primary-foreground">💊</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+              <span className="text-sm font-bold text-primary-foreground">💊</span>
+            </div>
+            <span className="text-lg font-semibold text-foreground">PharmAR System</span>
           </div>
-          <span className="text-lg font-semibold text-foreground">PharmAR System</span>
+          <nav className="hidden md:flex items-center gap-1 ml-4">
+            <Link
+              to="/"
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                isHome ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              )}
+            >
+              <Home className="h-4 w-4" /> Preparazioni
+            </Link>
+            <Link
+              to="/analytics"
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                isAnalytics ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              )}
+            >
+              <BarChart3 className="h-4 w-4" /> Analytics
+            </Link>
+          </nav>
         </div>
 
         <div className="relative hidden w-80 md:block">
