@@ -83,6 +83,11 @@ function generatePreparation(counter: number): Preparation {
   const min = Math.floor(Math.random() * 60);
   const pad = (n: number) => String(n).padStart(2, "0");
   const requestedAt = `${pad(hour)}:${pad(min)}`;
+  // Randomly assign today or yesterday
+  const now = new Date();
+  const dayOffset = Math.random() < 0.7 ? 0 : -1;
+  const dateObj = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset);
+  const date = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`;
   const startedAt = status === "attesa" ? null : `${pad(hour)}:${pad(Math.min(min + 10, 59))}`;
   const finishedAt = status === "completata" || status === "errore" ? `${pad(hour + 1)}:${pad(min)}` : null;
   const patient = pick(patients);
@@ -113,6 +118,7 @@ function generatePreparation(counter: number): Preparation {
     executor: exec?.name ?? null,
     executorInitials: exec?.initials ?? null,
     station: exec ? pick(stations) : null,
+    date,
     requestedAt,
     startedAt,
     finishedAt,
