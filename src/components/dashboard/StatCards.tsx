@@ -1,4 +1,4 @@
-import { Clock, Loader, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Clock, Loader, CheckCircle2, AlertTriangle, List } from "lucide-react";
 import type { Status } from "@/data/preparations";
 
 interface StatCardProps {
@@ -34,7 +34,8 @@ interface StatCardsProps {
 }
 
 const StatCards = ({ activeStatus, onStatusClick }: StatCardsProps) => {
-  const stats: { status: Status; icon: React.ReactNode; value: number; label: string; colorClass: string; bgClass: string }[] = [
+  const stats: { status: Status | null; icon: React.ReactNode; value: number; label: string; colorClass: string; bgClass: string }[] = [
+    { status: null, icon: <List className="h-6 w-6" />, value: 191, label: "Totale", colorClass: "text-primary", bgClass: "bg-primary/10" },
     { status: "attesa", icon: <Clock className="h-6 w-6" />, value: 24, label: "In Attesa", colorClass: "text-status-waiting", bgClass: "bg-status-waiting-bg" },
     { status: "esecuzione", icon: <Loader className="h-6 w-6" />, value: 8, label: "In Esecuzione", colorClass: "text-status-progress", bgClass: "bg-status-progress-bg" },
     { status: "completata", icon: <CheckCircle2 className="h-6 w-6" />, value: 156, label: "Completate", colorClass: "text-status-complete", bgClass: "bg-status-complete-bg" },
@@ -45,14 +46,14 @@ const StatCards = ({ activeStatus, onStatusClick }: StatCardsProps) => {
     <div className="flex flex-col gap-4 sm:flex-row">
       {stats.map((stat) => (
         <StatCard
-          key={stat.status}
+          key={stat.label}
           icon={stat.icon}
           value={stat.value}
           label={stat.label}
           colorClass={stat.colorClass}
           bgClass={stat.bgClass}
           active={activeStatus === stat.status}
-          onClick={() => onStatusClick(stat.status)}
+          onClick={() => onStatusClick(stat.status as Status)}
         />
       ))}
     </div>
