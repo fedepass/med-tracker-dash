@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
-import { preparations as initialPreparations, type Preparation, type Status, type Priority } from "@/data/preparations";
-import photoFarmaco from "@/assets/photo-farmaco.jpg";
-import photoContenitore from "@/assets/photo-contenitore.jpg";
+import { preparations as initialPreparations, type Preparation, type Status, type Priority, type PrepType, photoAssets } from "@/data/preparations";
 
 export const rejectionReasons = [
   "Sovradosaggio",
@@ -18,25 +16,33 @@ export const rejectionReasons = [
 
 export type RejectionReason = (typeof rejectionReasons)[number];
 
-const drugs = [
-  { drug: "Paracetamolo 500mg", form: "Capsula" },
-  { drug: "Ibuprofene 400mg", form: "Compressa" },
-  { drug: "Amoxicillina 875mg", form: "Soluzione" },
-  { drug: "Metformina 850mg", form: "Compressa" },
-  { drug: "Omeprazolo 20mg", form: "Capsula" },
-  { drug: "Ciprofloxacina 500mg", form: "Soluzione IV" },
-  { drug: "Furosemide 40mg", form: "Compressa" },
-  { drug: "Ceftriaxone 1g", form: "Soluzione IV" },
-  { drug: "Desametasone 4mg", form: "Fiala" },
-  { drug: "Morfina 10mg", form: "Fiala" },
-  { drug: "Diclofenac 75mg", form: "Compressa" },
-  { drug: "Ketoprofene 100mg", form: "Capsula" },
-  { drug: "Vancomicina 500mg", form: "Soluzione IV" },
-  { drug: "Insulina Glargine 100U", form: "Penna" },
-  { drug: "Pantoprazolo 40mg", form: "Compressa" },
+interface DrugDef {
+  drug: string;
+  form: string;
+  prepType: PrepType;
+  container: string;
+  diluent: string;
+  volume: number;
+  route: string;
+}
+
+const drugDefs: DrugDef[] = [
+  { drug: "Ceftriaxone 2g", form: "Polvere per soluzione per infusione", prepType: "infusione_iv", container: "Sacca NaCl 0.9% 100ml", diluent: "Soluzione Fisiologica NaCl 0.9% 100ml", volume: 100, route: "Endovenosa" },
+  { drug: "Vancomicina 1g", form: "Polvere per soluzione iniettabile", prepType: "siringa_ricostituita", container: "Siringa 50ml", diluent: "Acqua per preparazioni iniettabili 20ml", volume: 50, route: "Endovenosa lenta" },
+  { drug: "Meropenem 1g", form: "Polvere per soluzione per infusione", prepType: "infusione_iv", container: "Sacca NaCl 0.9% 50ml", diluent: "Soluzione Fisiologica NaCl 0.9% 50ml", volume: 50, route: "Endovenosa" },
+  { drug: "Piperacillina/Tazobactam 4.5g", form: "Polvere per soluzione per infusione", prepType: "infusione_iv", container: "Sacca NaCl 0.9% 100ml", diluent: "Soluzione Fisiologica NaCl 0.9% 100ml", volume: 100, route: "Endovenosa" },
+  { drug: "Ampicillina 1g", form: "Polvere per soluzione iniettabile", prepType: "siringa_ricostituita", container: "Siringa 20ml", diluent: "Acqua per preparazioni iniettabili 20ml", volume: 20, route: "Endovenosa" },
+  { drug: "Amoxicillina/Ac. Clavulanico 2.2g", form: "Polvere per soluzione per infusione", prepType: "infusione_iv", container: "Sacca NaCl 0.9% 100ml", diluent: "Soluzione Fisiologica NaCl 0.9% 100ml", volume: 100, route: "Endovenosa" },
+  { drug: "Pantoprazolo 40mg", form: "Polvere per soluzione iniettabile", prepType: "siringa_ricostituita", container: "Siringa 10ml", diluent: "NaCl 0.9% 10ml", volume: 10, route: "Endovenosa" },
+  { drug: "Teicoplanina 400mg", form: "Polvere per soluzione per infusione", prepType: "infusione_iv", container: "Sacca NaCl 0.9% 100ml", diluent: "Acqua PPI 3ml + NaCl 0.9% 100ml", volume: 100, route: "Endovenosa" },
+  { drug: "Desametasone 8mg", form: "Soluzione iniettabile", prepType: "siringa_ricostituita", container: "Siringa 5ml", diluent: "NaCl 0.9% 3ml", volume: 5, route: "Endovenosa" },
+  { drug: "Ciprofloxacina 400mg", form: "Soluzione per infusione", prepType: "infusione_iv", container: "Sacca Glucosio 5% 200ml", diluent: "Glucosio 5% 200ml", volume: 200, route: "Endovenosa" },
+  { drug: "Metronidazolo 500mg", form: "Soluzione per infusione", prepType: "infusione_iv", container: "Sacca NaCl 0.9% 100ml", diluent: "NaCl 0.9% 100ml", volume: 100, route: "Endovenosa" },
+  { drug: "Fluconazolo 200mg", form: "Soluzione per infusione", prepType: "infusione_iv", container: "Sacca NaCl 0.9% 100ml", diluent: "NaCl 0.9% 100ml", volume: 100, route: "Endovenosa" },
+  { drug: "Morfina 10mg", form: "Soluzione iniettabile", prepType: "siringa_ricostituita", container: "Siringa 10ml", diluent: "NaCl 0.9% 9ml", volume: 10, route: "Endovenosa lenta" },
+  { drug: "Furosemide 20mg", form: "Soluzione iniettabile", prepType: "siringa_ricostituita", container: "Siringa 5ml", diluent: "NaCl 0.9%", volume: 5, route: "Endovenosa" },
 ];
 
-const containers = ["Contenitore A1", "Contenitore A5", "Contenitore B12", "Contenitore C3", "Contenitore D7", "Contenitore E2"];
 const executors = [
   { name: "L. Bianchi", initials: "LB" },
   { name: "M. Rossi", initials: "MR" },
@@ -44,7 +50,7 @@ const executors = [
   { name: "S. Ferrari", initials: "SF" },
   { name: "G. Romano", initials: "GR" },
 ];
-const stations = ["Post. 1", "Post. 2", "Post. 3", "Post. 4"];
+const stations = ["Cappa 1", "Cappa 2", "Cappa 3", "Cappa 4"];
 const statuses: Status[] = ["completata", "esecuzione", "attesa", "errore"];
 const priorities: Priority[] = ["alta", "media", "bassa"];
 const patients = [
@@ -54,6 +60,8 @@ const patients = [
   { name: "Lucia Ferrari", id: "PAZ-004" },
   { name: "Paolo Romano", id: "PAZ-005" },
   { name: "Francesca Conti", id: "PAZ-006" },
+  { name: "Roberto Colombo", id: "PAZ-007" },
+  { name: "Elena Ricci", id: "PAZ-008" },
 ];
 
 function pick<T>(arr: T[]): T {
@@ -66,25 +74,36 @@ function randBetween(min: number, max: number) {
 
 function generatePreparation(counter: number): Preparation {
   const status = pick(statuses);
-  const d = pick(drugs);
-  const target = randBetween(10, 100);
-  const dispensed = status === "attesa" ? 0 : status === "esecuzione" ? randBetween(0, target) : randBetween(target * 0.9, target * 1.05);
-  const errorRate = status === "errore" ? randBetween(2.5, 8) : status === "attesa" ? 0 : randBetween(0, 2);
+  const d = pick(drugDefs);
+  const target = d.volume;
+  const dispensed = status === "attesa" ? 0 : status === "esecuzione" ? randBetween(0, target) : randBetween(target * 0.95, target * 1.05);
+  const errorRate = status === "errore" ? randBetween(2.5, 8) : status === "attesa" ? 0 : randBetween(0, 1.5);
   const exec = status === "attesa" ? null : pick(executors);
   const hour = 7 + Math.floor(Math.random() * 10);
   const min = Math.floor(Math.random() * 60);
-  const requestedAt = `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
-  const startedAt = status === "attesa" ? null : `${String(hour).padStart(2, "0")}:${String(min + 10).padStart(2, "0")}`;
-  const finishedAt = status === "completata" || status === "errore" ? `${String(hour + 1).padStart(2, "0")}:${String(min).padStart(2, "0")}` : null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const requestedAt = `${pad(hour)}:${pad(min)}`;
+  const startedAt = status === "attesa" ? null : `${pad(hour)}:${pad(Math.min(min + 10, 59))}`;
+  const finishedAt = status === "completata" || status === "errore" ? `${pad(hour + 1)}:${pad(min)}` : null;
   const patient = pick(patients);
+  const barcode = `80${String(Math.floor(Math.random() * 1e10)).padStart(11, "0")}`;
+
+  const isIV = d.prepType === "infusione_iv";
+  const photos = [
+    { type: "farmaco" as const, label: `${d.drug} - Flacone polvere liofilizzata`, url: photoAssets.flaconePolvere, barcode },
+    { type: "diluente" as const, label: d.diluent, url: photoAssets.diluente, barcode: `80${barcode.slice(2)}` },
+    { type: "contenitore" as const, label: isIV ? "Sacca IV per infusione" : "Siringa sterile per preparazione", url: isIV ? photoAssets.saccaIV : photoAssets.siringa },
+    { type: "preparazione" as const, label: isIV ? "Preparazione finale - Sacca IV pronta" : "Preparazione finale - Siringa pronta", url: photoAssets.preparazioneFinale },
+  ];
 
   return {
     id: `RX-${3000 + counter}`,
     status,
     priority: pick(priorities),
+    prepType: d.prepType,
     drug: d.drug,
     form: d.form,
-    container: pick(containers),
+    container: d.container,
     dispensed,
     target,
     errorRate,
@@ -94,23 +113,20 @@ function generatePreparation(counter: number): Preparation {
     requestedAt,
     startedAt,
     finishedAt,
-    photos: [
-      { type: "farmaco", label: `${d.drug} - Riconoscimento`, url: photoFarmaco, barcode: `80${String(Math.floor(Math.random() * 1e10)).padStart(11, "0")}` },
-      { type: "contenitore", label: `${pick(containers)} - Sacca`, url: photoContenitore },
-    ],
+    photos: status === "attesa" ? [] : photos,
     supplementaryDoses: [],
     labelData: {
       patientName: patient.name,
       patientId: patient.id,
-      drug: d.drug,
-      dosage: `${randBetween(100, 1000)}mg`,
-      route: pick(["EV", "Orale", "IM", "SC"]),
-      volume: `${randBetween(50, 500)}ml`,
+      drug: `${d.drug} in ${d.diluent.split(" ").slice(0, 3).join(" ")}`,
+      dosage: d.drug.split(" ").pop() ?? "",
+      route: d.route,
+      volume: `${target} ml`,
       preparedBy: exec?.name ?? "Non assegnato",
-      preparedAt: `23/02/2026 ${requestedAt}`,
+      preparedAt: finishedAt ? `23/02/2026 ${finishedAt}` : "In corso",
       expiresAt: "24/02/2026 08:00",
       lotNumber: `LOT-${String(Math.floor(Math.random() * 1e6)).padStart(6, "0")}`,
-      notes: "Preparazione standard",
+      notes: isIV ? `Infondere in ${target >= 100 ? 30 : 15} minuti.` : "Somministrare in bolo lento.",
     },
   };
 }

@@ -208,11 +208,11 @@ const PreparationDetail = () => {
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Target</span>
-                  <span className="font-medium text-foreground">{prep.target}g</span>
+                  <span className="font-medium text-foreground">{prep.target}ml</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Erogato</span>
-                  <span className="font-medium text-foreground">{prep.dispensed}g</span>
+                  <span className="font-medium text-foreground">{prep.dispensed}ml</span>
                 </div>
                 <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
                   <div
@@ -236,7 +236,7 @@ const PreparationDetail = () => {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Tot. supplementare</span>
                       <span className="font-medium text-foreground">
-                        +{prep.supplementaryDoses.reduce((s, d) => s + d.amount, 0).toFixed(1)}g
+                        +{prep.supplementaryDoses.reduce((s, d) => s + d.amount, 0).toFixed(1)}ml
                       </span>
                     </div>
                   </>

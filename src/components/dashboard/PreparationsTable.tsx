@@ -213,7 +213,7 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
                   </td>
                   <td className="px-4 py-4">
                     <p className="mb-1 text-sm font-medium text-foreground">
-                      {p.dispensed}g / {p.target}g
+                      {p.dispensed}ml / {p.target}ml
                     </p>
                     <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
                       <div
