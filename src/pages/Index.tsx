@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/dashboard/Navbar";
 import StatCards from "@/components/dashboard/StatCards";
 import PreparationsTable from "@/components/dashboard/PreparationsTable";
+import type { Status } from "@/data/preparations";
 
 const Index = () => {
+  const [statusFilter, setStatusFilter] = useState<Status | null>(null);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -29,11 +33,11 @@ const Index = () => {
 
         {/* Stats */}
         <div className="mb-6">
-          <StatCards />
+          <StatCards activeStatus={statusFilter} onStatusClick={(s) => setStatusFilter(statusFilter === s ? null : s)} />
         </div>
 
         {/* Table */}
-        <PreparationsTable />
+        <PreparationsTable statusFilter={statusFilter} />
       </main>
     </div>
   );
