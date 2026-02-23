@@ -136,18 +136,24 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
           </span>
         </div>
         <div className="flex items-center gap-3">
-          {selected.size > 0 && (
-            <button
-              onClick={() => {
-                selected.forEach((id) => validatePreparation(id));
-                setSelected(new Set());
-              }}
-              className="inline-flex items-center gap-1.5 rounded-md bg-status-complete px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-status-complete/90"
-            >
-              <Check className="h-3.5 w-3.5" />
-              Valida ({selected.size})
-            </button>
-          )}
+          {selected.size > 0 && (() => {
+            const validatable = [...selected].filter((id) => {
+              const p = preparations.find((pr) => pr.id === id);
+              return p && p.status !== "attesa" && p.status !== "esecuzione" && p.status !== "validata" && p.status !== "rifiutata";
+            });
+            return validatable.length > 0 ? (
+              <button
+                onClick={() => {
+                  validatable.forEach((id) => validatePreparation(id));
+                  setSelected(new Set());
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md bg-status-complete px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-status-complete/90"
+              >
+                <Check className="h-3.5 w-3.5" />
+                Valida ({validatable.length})
+              </button>
+            ) : null;
+          })()}
           <span className="text-sm text-muted-foreground">{selected.size} selezionate</span>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -274,20 +280,24 @@ const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Stat
                   <td className="px-4 py-4">
                     {p.status !== "validata" && p.status !== "rifiutata" ? (
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => validatePreparation(p.id)}
-                          className="rounded-md p-1.5 text-status-complete transition-colors hover:bg-status-complete-bg"
-                          title="Valida"
-                        >
-                          <Check className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => { setRejectTargetIds([p.id]); setRejectDialogOpen(true); }}
-                          className="rounded-md p-1.5 text-status-error transition-colors hover:bg-status-error-bg"
-                          title="Rifiuta"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                        {p.status !== "attesa" && p.status !== "esecuzione" ? (
+                          <>
+                            <button
+                              onClick={() => validatePreparation(p.id)}
+                              className="rounded-md p-1.5 text-status-complete transition-colors hover:bg-status-complete-bg"
+                              title="Valida"
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => { setRejectTargetIds([p.id]); setRejectDialogOpen(true); }}
+                              className="rounded-md p-1.5 text-status-error transition-colors hover:bg-status-error-bg"
+                              title="Rifiuta"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        ) : null}
                         <button onClick={() => navigate(`/preparation/${p.id}`)} className="rounded-md p-1.5 text-primary transition-colors hover:bg-primary/10" title="Dettagli">
                           <ArrowRight className="h-4 w-4" />
                         </button>

@@ -92,17 +92,23 @@ const PreparationDetail = () => {
                 <Printer className="h-4 w-4" /> Ristampa Etichetta
               </Button>
               {prep.status !== "validata" && prep.status !== "rifiutata" ? (
-                <>
-                  <Button
-                    className="gap-2 bg-status-complete text-primary-foreground hover:bg-status-complete/90"
-                    onClick={() => { validatePreparation(prep.id); navigate("/"); }}
-                  >
-                    <Check className="h-4 w-4" /> Valida
-                  </Button>
-                  <Button variant="destructive" className="gap-2" onClick={() => setRejectDialogOpen(true)}>
-                    <X className="h-4 w-4" /> Rifiuta
-                  </Button>
-                </>
+                prep.status !== "attesa" && prep.status !== "esecuzione" ? (
+                  <>
+                    <Button
+                      className="gap-2 bg-status-complete text-primary-foreground hover:bg-status-complete/90"
+                      onClick={() => { validatePreparation(prep.id); navigate("/"); }}
+                    >
+                      <Check className="h-4 w-4" /> Valida
+                    </Button>
+                    <Button variant="destructive" className="gap-2" onClick={() => setRejectDialogOpen(true)}>
+                      <X className="h-4 w-4" /> Rifiuta
+                    </Button>
+                  </>
+                ) : (
+                  <Badge className="text-sm bg-status-waiting-bg text-status-waiting">
+                    {prep.status === "attesa" ? "Da eseguire" : "In esecuzione"}
+                  </Badge>
+                )
               ) : (
                 <Badge className={`text-sm ${prep.status === "validata" ? "bg-status-complete-bg text-status-complete" : "bg-status-error-bg text-status-error"}`}>
                   {prep.status === "validata" ? "Validata" : `Rifiutata: ${getRejectionReason(prep.id) ?? ""}`}
