@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { preparations, type Status, type Priority } from "@/data/preparations";
+import { type Status, type Priority } from "@/data/preparations";
+import { usePreparations, type RejectionReason } from "@/context/PreparationsContext";
 import Navbar from "@/components/dashboard/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import RejectDialog from "@/components/dashboard/RejectDialog";
 import {
   ArrowLeft, CheckCircle2, Loader, AlertTriangle, Clock,
   Check, X, Printer, Camera, ScanBarcode, Beaker, FlaskConical,
-  Package, Timer, Droplets, ArrowRight,
+  Package, Timer, Droplets, ArrowRight, ShieldCheck, ShieldX,
 } from "lucide-react";
 
 const statusConfig: Record<Status, { icon: React.ReactNode; label: string; className: string; bgClassName: string }> = {
@@ -16,6 +19,8 @@ const statusConfig: Record<Status, { icon: React.ReactNode; label: string; class
   esecuzione: { icon: <Loader className="h-5 w-5" />, label: "In esecuzione", className: "text-status-progress", bgClassName: "bg-status-progress-bg" },
   errore: { icon: <AlertTriangle className="h-5 w-5" />, label: "Errore", className: "text-status-error", bgClassName: "bg-status-error-bg" },
   attesa: { icon: <Clock className="h-5 w-5" />, label: "Da eseguire", className: "text-status-waiting", bgClassName: "bg-status-waiting-bg" },
+  validata: { icon: <ShieldCheck className="h-5 w-5" />, label: "Validata", className: "text-status-complete", bgClassName: "bg-status-complete-bg" },
+  rifiutata: { icon: <ShieldX className="h-5 w-5" />, label: "Rifiutata", className: "text-status-error", bgClassName: "bg-status-error-bg" },
 };
 
 const priorityConfig: Record<Priority, { label: string; className: string }> = {
@@ -34,6 +39,8 @@ const photoTypeIcon: Record<string, React.ReactNode> = {
 const PreparationDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { preparations, validatePreparation, rejectPreparation, getRejectionReason } = usePreparations();
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const prep = preparations.find((p) => p.id === id);
 
   if (!prep) {
@@ -84,12 +91,23 @@ const PreparationDetail = () => {
               <Button variant="outline" className="gap-2">
                 <Printer className="h-4 w-4" /> Ristampa Etichetta
               </Button>
-              <Button className="gap-2 bg-status-complete text-primary-foreground hover:bg-status-complete/90">
-                <Check className="h-4 w-4" /> Valida
-              </Button>
-              <Button variant="destructive" className="gap-2">
-                <X className="h-4 w-4" /> Rifiuta
-              </Button>
+              {prep.status !== "validata" && prep.status !== "rifiutata" ? (
+                <>
+                  <Button
+                    className="gap-2 bg-status-complete text-primary-foreground hover:bg-status-complete/90"
+                    onClick={() => { validatePreparation(prep.id); navigate("/"); }}
+                  >
+                    <Check className="h-4 w-4" /> Valida
+                  </Button>
+                  <Button variant="destructive" className="gap-2" onClick={() => setRejectDialogOpen(true)}>
+                    <X className="h-4 w-4" /> Rifiuta
+                  </Button>
+                </>
+              ) : (
+                <Badge className={`text-sm ${prep.status === "validata" ? "bg-status-complete-bg text-status-complete" : "bg-status-error-bg text-status-error"}`}>
+                  {prep.status === "validata" ? "Validata" : `Rifiutata: ${getRejectionReason(prep.id) ?? ""}`}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -270,6 +288,17 @@ const PreparationDetail = () => {
             </section>
           </div>
         </div>
+
+        <RejectDialog
+          open={rejectDialogOpen}
+          preparationIds={prep ? [prep.id] : []}
+          onConfirm={(reason) => {
+            rejectPreparation(prep!.id, reason);
+            setRejectDialogOpen(false);
+            navigate("/");
+          }}
+          onCancel={() => setRejectDialogOpen(false)}
+        />
       </main>
     </div>
   );

@@ -1,18 +1,21 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
+import { CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, Search, ShieldCheck, ShieldX } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { preparations, type Status, type Priority } from "@/data/preparations";
-
+import { type Status, type Priority } from "@/data/preparations";
+import { usePreparations, type RejectionReason } from "@/context/PreparationsContext";
+import RejectDialog from "./RejectDialog";
 
 const statusConfig: Record<Status, { icon: React.ReactNode; label: string; className: string }> = {
   completata: { icon: <CheckCircle2 className="h-4 w-4" />, label: "Completata", className: "text-status-complete" },
   esecuzione: { icon: <Loader className="h-4 w-4" />, label: "In esecuzione", className: "text-status-progress" },
   errore: { icon: <AlertTriangle className="h-4 w-4" />, label: "Errore", className: "text-status-error" },
   attesa: { icon: <Clock className="h-4 w-4" />, label: "Da eseguire", className: "text-status-waiting" },
+  validata: { icon: <ShieldCheck className="h-4 w-4" />, label: "Validata", className: "text-status-complete" },
+  rifiutata: { icon: <ShieldX className="h-4 w-4" />, label: "Rifiutata", className: "text-status-error" },
 };
 
 const priorityConfig: Record<Priority, { label: string; className: string }> = {
@@ -25,14 +28,17 @@ type SortKey = "id" | "status" | "drug" | "dispensed" | "errorRate" | "executor"
 type SortDir = "asc" | "desc";
 
 const priorityOrder: Record<Priority, number> = { alta: 0, media: 1, bassa: 2 };
-const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3 };
+const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3, validata: 4, rifiutata: 5 };
 
-const PreparationsTable = ({ statusFilter }: { statusFilter?: Status | null }) => {
+const PreparationsTable = ({ statusFilter, showArchived }: { statusFilter?: Status | null; showArchived?: boolean }) => {
   const navigate = useNavigate();
+  const { preparations, validatePreparation, rejectPreparation } = usePreparations();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectTargetIds, setRejectTargetIds] = useState<string[]>([]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -50,8 +56,13 @@ const PreparationsTable = ({ statusFilter }: { statusFilter?: Status | null }) =
 
   const filtered = useMemo(() => {
     let data = preparations;
-    if (statusFilter) {
+    // Hide validated/rejected unless explicitly filtering or showArchived
+    if (statusFilter === "validata" || statusFilter === "rifiutata") {
       data = data.filter((p) => p.status === statusFilter);
+    } else if (statusFilter) {
+      data = data.filter((p) => p.status === statusFilter);
+    } else if (!showArchived) {
+      data = data.filter((p) => p.status !== "validata" && p.status !== "rifiutata");
     }
     if (!search.trim()) return data;
     const q = search.toLowerCase();
@@ -60,7 +71,7 @@ const PreparationsTable = ({ statusFilter }: { statusFilter?: Status | null }) =
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(q))
     );
-  }, [search, statusFilter]);
+  }, [search, statusFilter, preparations, showArchived]);
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
@@ -240,17 +251,36 @@ const PreparationsTable = ({ statusFilter }: { statusFilter?: Status | null }) =
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <div className="flex items-center gap-1">
-                      <button className="rounded-md p-1.5 text-status-complete transition-colors hover:bg-status-complete-bg" title="Valida">
-                        <Check className="h-4 w-4" />
-                      </button>
-                      <button className="rounded-md p-1.5 text-status-error transition-colors hover:bg-status-error-bg" title="Rifiuta">
-                        <X className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => navigate(`/preparation/${p.id}`)} className="rounded-md p-1.5 text-primary transition-colors hover:bg-primary/10" title="Dettagli">
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
-                    </div>
+                    {p.status !== "validata" && p.status !== "rifiutata" ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => validatePreparation(p.id)}
+                          className="rounded-md p-1.5 text-status-complete transition-colors hover:bg-status-complete-bg"
+                          title="Valida"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => { setRejectTargetIds([p.id]); setRejectDialogOpen(true); }}
+                          className="rounded-md p-1.5 text-status-error transition-colors hover:bg-status-error-bg"
+                          title="Rifiuta"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => navigate(`/preparation/${p.id}`)} className="rounded-md p-1.5 text-primary transition-colors hover:bg-primary/10" title="Dettagli">
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className={`text-[10px] border-0 ${p.status === "validata" ? "bg-status-complete-bg text-status-complete" : "bg-status-error-bg text-status-error"}`}>
+                          {statusConfig[p.status].label}
+                        </Badge>
+                        <button onClick={() => navigate(`/preparation/${p.id}`)} className="rounded-md p-1.5 text-primary transition-colors hover:bg-primary/10" title="Dettagli">
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -270,6 +300,18 @@ const PreparationsTable = ({ statusFilter }: { statusFilter?: Status | null }) =
           <button className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary">Successivo</button>
         </div>
       </div>
+
+      <RejectDialog
+        open={rejectDialogOpen}
+        preparationIds={rejectTargetIds}
+        onConfirm={(reason) => {
+          rejectTargetIds.forEach((rid) => rejectPreparation(rid, reason));
+          setRejectDialogOpen(false);
+          setRejectTargetIds([]);
+          setSelected(new Set());
+        }}
+        onCancel={() => { setRejectDialogOpen(false); setRejectTargetIds([]); }}
+      />
     </div>
   );
 };
