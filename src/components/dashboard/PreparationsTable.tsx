@@ -27,7 +27,7 @@ type SortDir = "asc" | "desc";
 const priorityOrder: Record<Priority, number> = { alta: 0, media: 1, bassa: 2 };
 const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3 };
 
-const PreparationsTable = () => {
+const PreparationsTable = ({ statusFilter }: { statusFilter?: Status | null }) => {
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -49,14 +49,18 @@ const PreparationsTable = () => {
   };
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return preparations;
+    let data = preparations;
+    if (statusFilter) {
+      data = data.filter((p) => p.status === statusFilter);
+    }
+    if (!search.trim()) return data;
     const q = search.toLowerCase();
-    return preparations.filter((p) =>
+    return data.filter((p) =>
       [p.id, p.drug, p.form, p.container, p.executor, p.station, p.status, p.priority, p.requestedAt, p.startedAt, p.finishedAt, String(p.errorRate), `${p.dispensed}`, `${p.target}`]
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(q))
     );
-  }, [search]);
+  }, [search, statusFilter]);
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
