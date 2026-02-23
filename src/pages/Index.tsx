@@ -33,7 +33,7 @@ const Index = () => {
 
         {/* Stats */}
         <div className="mb-6">
-          <StatCards activeStatus={statusFilter} onStatusClick={(s) => setStatusFilter(statusFilter === s ? null : s)} />
+          <StatCards activeStatus={statusFilter} onStatusClick={(s) => setStatusFilter(statusFilter === s ? null : s === null ? null : s)} />
         </div>
 
         {/* Table */}
