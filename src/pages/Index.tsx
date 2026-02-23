@@ -1,12 +1,46 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { CheckCircle2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Navbar from "@/components/dashboard/Navbar";
+import StatCards from "@/components/dashboard/StatCards";
+import FiltersBar from "@/components/dashboard/FiltersBar";
+import PreparationsTable from "@/components/dashboard/PreparationsTable";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+        {/* Header */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Dashboard Preparazioni</h1>
+            <p className="text-sm text-muted-foreground">Supervisione e validazione delle preparazioni farmaceutiche</p>
+          </div>
+          <div className="flex gap-2">
+            <Button className="gap-2 bg-status-complete text-primary-foreground hover:bg-status-complete/90">
+              <CheckCircle2 className="h-4 w-4" />
+              Valida Selezionate
+            </Button>
+            <Button variant="destructive" className="gap-2">
+              <X className="h-4 w-4" />
+              Rifiuta Selezionate
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="mb-6">
+          <StatCards />
+        </div>
+
+        {/* Filters */}
+        <div className="mb-6">
+          <FiltersBar />
+        </div>
+
+        {/* Table */}
+        <PreparationsTable />
+      </main>
     </div>
   );
 };
