@@ -1,8 +1,8 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 1.7
-**Date**: 2026-02-27
+**Version**: 1.8
+**Date**: 2026-02-28
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
 ### Changelog
@@ -16,6 +16,7 @@
 | 1.5 | 2026-02-27 | PDF aperto in nuova scheda browser (no download automatico); bottone "Ristampa Etichetta" disabilitato per preparazioni non ancora terminate (attesa/esecuzione) |
 | 1.6 | 2026-02-27 | Aggiunto bottone "Annulla" nell'Archivio (tabella e dettaglio) per ripristinare lo stato precedente di preparazioni validate o rifiutate |
 | 1.7 | 2026-02-27 | Fix contatore "Da Valutare": rimossa auto-generazione preparazione dopo validate/rifiuta; il contatore ora diminuisce correttamente alla validazione e aumenta all'annullamento |
+| 1.8 | 2026-02-28 | Titolo tab browser aggiornato da "Lovable App" a "Pharma Dashboard"; favicon sostituito con SVG custom (croce medica bianca su cerchio blu `#1e40af`); meta tag OG/Twitter aggiornati e rimossi riferimenti a Lovable |
 
 ---
 
@@ -48,7 +49,9 @@
 - **Nome applicazione**: PharmAR System
 - **Sottotitolo**: Pharmaceutical Preparation Tracker Dashboard
 - **Brand name (login page)**: PharmPrep
+- **Titolo tab browser**: Pharma Dashboard
 - **Logo**: icona pill (💊) + testo "PharmAR System"
+- **Favicon**: `public/favicon.svg` — croce medica bianca su cerchio blu (`#1e40af`), formato SVG 32×32
 
 ### 1.2 Scopo
 Applicazione web per la gestione, il monitoraggio e la validazione di preparazioni farmaceutiche ospedaliere. Permette al personale farmaceutico di:
