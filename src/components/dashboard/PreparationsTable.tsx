@@ -264,10 +264,11 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
               return (
                 <tr
                   key={p.id}
-                  className="border-b border-border transition-colors last:border-0 hover:bg-secondary/50"
+                  onClick={() => mode === "active" && toggleSelect(p.id)}
+                  className={`border-b border-border transition-colors last:border-0 hover:bg-secondary/50 ${mode === "active" ? "cursor-pointer" : ""}`}
                 >
                   {mode === "active" && (
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} />
                     </td>
                   )}
@@ -348,7 +349,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
                       )}
                     </td>
                   )}
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                     {mode === "active" ? (
                       <div className="flex flex-wrap items-center gap-1.5">
                         {p.status !== "attesa" && p.status !== "esecuzione" ? (

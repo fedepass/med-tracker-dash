@@ -1,7 +1,7 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 1.8
+**Version**: 1.9
 **Date**: 2026-02-28
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
@@ -17,6 +17,7 @@
 | 1.6 | 2026-02-27 | Aggiunto bottone "Annulla" nell'Archivio (tabella e dettaglio) per ripristinare lo stato precedente di preparazioni validate o rifiutate |
 | 1.7 | 2026-02-27 | Fix contatore "Da Valutare": rimossa auto-generazione preparazione dopo validate/rifiuta; il contatore ora diminuisce correttamente alla validazione e aumenta all'annullamento |
 | 1.8 | 2026-02-28 | Titolo tab browser aggiornato da "Lovable App" a "Pharma Dashboard"; favicon sostituito con SVG custom (croce medica bianca su cerchio blu `#1e40af`); meta tag OG/Twitter aggiornati e rimossi riferimenti a Lovable |
+| 1.9 | 2026-02-28 | Click sulla riga della tabella seleziona/deseleziona la checkbox corrispondente (solo `mode="active"`); stopPropagation su checkbox e colonna azioni per evitare doppi toggle |
 
 ---
 
@@ -1106,7 +1107,8 @@ Implementazione: `[...filtered].sort((a, b) => ...)` lato client.
 
 #### Selezione e Azioni Bulk (solo `mode="active"`)
 
-- Checkbox in ogni riga → aggiunge/rimuove ID da `selected[]`
+- **Click sulla riga** → seleziona/deseleziona la checkbox corrispondente (comportamento toggle)
+- Checkbox in ogni riga → stesso effetto del click sulla riga (stopPropagation per evitare doppio toggle)
 - Checkbox header → seleziona/deseleziona tutti nella pagina corrente
 - Se `selected.length > 0`: mostra bottone "Valida (N)" nella barra header
 - Solo le preparazioni con status `completata` o `errore` vengono incluse nella validazione bulk (le altre sono filtrate)
