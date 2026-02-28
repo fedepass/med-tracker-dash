@@ -231,6 +231,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
               <th className={thClass} onClick={() => toggleSort("status")}>
                 <span className="inline-flex items-center gap-1">ID / Stato <SortIcon col="status" /></span>
               </th>
+              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider">Priorità</th>
               <th className={thClass} onClick={() => toggleSort("drug")}>
                 <span className="inline-flex items-center gap-1">Richiesta <SortIcon col="drug" /></span>
               </th>
@@ -273,7 +274,9 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
                       {sc.icon}
                       {sc.label}
                     </div>
-                    <Badge variant="outline" className={`mt-1 border-0 text-[10px] font-medium ${pc.className}`}>
+                  </td>
+                  <td className="px-4 py-4">
+                    <Badge variant="outline" className={`border-0 text-[10px] font-medium ${pc.className}`}>
                       {pc.label}
                     </Badge>
                   </td>
