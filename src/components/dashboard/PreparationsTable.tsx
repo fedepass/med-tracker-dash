@@ -27,7 +27,7 @@ const priorityConfig: Record<Priority, { label: string; className: string }> = {
   bassa: { label: "Priorità Bassa", className: "bg-status-complete-bg text-status-complete" },
 };
 
-type SortKey = "id" | "status" | "drug" | "dispensed" | "errorRate" | "executor" | "requestedAt";
+type SortKey = "id" | "status" | "priority" | "drug" | "dispensed" | "errorRate" | "executor" | "requestedAt";
 type SortDir = "asc" | "desc";
 
 const priorityOrder: Record<Priority, number> = { alta: 0, media: 1, bassa: 2 };
@@ -99,6 +99,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
       switch (sortKey) {
         case "id": cmp = a.id.localeCompare(b.id); break;
         case "status": cmp = statusOrder[a.status] - statusOrder[b.status] || priorityOrder[a.priority] - priorityOrder[b.priority]; break;
+        case "priority": cmp = priorityOrder[a.priority] - priorityOrder[b.priority]; break;
         case "drug": cmp = a.drug.localeCompare(b.drug); break;
         case "dispensed": cmp = (a.dispensed / a.target) - (b.dispensed / b.target); break;
         case "errorRate": cmp = a.errorRate - b.errorRate; break;
@@ -231,7 +232,9 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
               <th className={thClass} onClick={() => toggleSort("status")}>
                 <span className="inline-flex items-center gap-1">ID / Stato <SortIcon col="status" /></span>
               </th>
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider">Priorità</th>
+              <th className={thClass} onClick={() => toggleSort("priority")}>
+                <span className="inline-flex items-center gap-1">Priorità <SortIcon col="priority" /></span>
+              </th>
               <th className={thClass} onClick={() => toggleSort("drug")}>
                 <span className="inline-flex items-center gap-1">Richiesta <SortIcon col="drug" /></span>
               </th>
