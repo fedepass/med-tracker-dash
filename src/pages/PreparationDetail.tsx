@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { generateLabelPdf } from "@/lib/generateLabelPdf";
 import { type Status, type Priority } from "@/data/preparations";
 import { usePreparations, type RejectionReason } from "@/context/PreparationsContext";
 import Navbar from "@/components/dashboard/Navbar";
@@ -11,7 +12,7 @@ import RejectDialog from "@/components/dashboard/RejectDialog";
 import {
   ArrowLeft, CheckCircle2, Loader, AlertTriangle, Clock,
   Check, X, Printer, Camera, ScanBarcode, Beaker, FlaskConical,
-  Package, Timer, Droplets, ArrowRight, ShieldCheck, ShieldX,
+  Package, Timer, Droplets, ArrowRight, ShieldCheck, ShieldX, RotateCcw,
 } from "lucide-react";
 
 const statusConfig: Record<Status, { icon: React.ReactNode; label: string; className: string; bgClassName: string }> = {
@@ -39,7 +40,7 @@ const photoTypeIcon: Record<string, React.ReactNode> = {
 const PreparationDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { preparations, validatePreparation, rejectPreparation, getRejectionReason } = usePreparations();
+  const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation } = usePreparations();
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const prep = preparations.find((p) => p.id === id);
 
@@ -88,7 +89,13 @@ const PreparationDetail = () => {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" className="gap-2">
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => generateLabelPdf(prep)}
+                disabled={prep.status === "attesa" || prep.status === "esecuzione"}
+                title={prep.status === "attesa" || prep.status === "esecuzione" ? "Etichetta disponibile solo a preparazione terminata" : undefined}
+              >
                 <Printer className="h-4 w-4" /> Ristampa Etichetta
               </Button>
               {prep.status !== "validata" && prep.status !== "rifiutata" ? (
@@ -110,9 +117,19 @@ const PreparationDetail = () => {
                   </Badge>
                 )
               ) : (
-                <Badge className={`text-sm ${prep.status === "validata" ? "bg-status-complete-bg text-status-complete" : "bg-status-error-bg text-status-error"}`}>
-                  {prep.status === "validata" ? "Validata" : `Rifiutata: ${getRejectionReason(prep.id) ?? ""}`}
-                </Badge>
+                <>
+                  <Badge className={`text-sm ${prep.status === "validata" ? "bg-status-complete-bg text-status-complete" : "bg-status-error-bg text-status-error"}`}>
+                    {prep.status === "validata" ? "Validata" : `Rifiutata: ${getRejectionReason(prep.id) ?? ""}`}
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => { undoPreparation(prep.id); navigate("/"); }}
+                    title="Annulla validazione o rifiuto e ripristina lo stato precedente"
+                  >
+                    <RotateCcw className="h-4 w-4" /> Annulla
+                  </Button>
+                </>
               )}
             </div>
           </div>

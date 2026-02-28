@@ -1,6 +1,9 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, Search, ShieldCheck, ShieldX } from "lucide-react";
+import {
+  CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight,
+  ArrowUpDown, ArrowUp, ArrowDown, Search, ShieldCheck, ShieldX, PackageOpen, RotateCcw,
+} from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -30,9 +33,16 @@ type SortDir = "asc" | "desc";
 const priorityOrder: Record<Priority, number> = { alta: 0, media: 1, bassa: 2 };
 const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3, validata: 4, rifiutata: 5 };
 
-const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusFilter?: Status | null; showArchived?: boolean; dateFilter?: string }) => {
+interface PreparationsTableProps {
+  mode: "active" | "archived";
+  statusFilter?: Status | null;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: PreparationsTableProps) => {
   const navigate = useNavigate();
-  const { preparations, validatePreparation, rejectPreparation } = usePreparations();
+  const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation } = usePreparations();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -58,26 +68,29 @@ const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusF
 
   const filtered = useMemo(() => {
     let data = preparations;
-    // Date filter
-    if (dateFilter) {
-      data = data.filter((p) => p.date === dateFilter);
-    }
-    // Hide validated/rejected unless explicitly filtering or showArchived
-    if (statusFilter === "validata" || statusFilter === "rifiutata") {
-      data = data.filter((p) => p.status === statusFilter);
-    } else if (statusFilter) {
-      data = data.filter((p) => p.status === statusFilter);
-    } else if (!showArchived) {
+
+    if (dateFrom) data = data.filter((p) => p.date >= dateFrom);
+    if (dateTo) data = data.filter((p) => p.date <= dateTo);
+
+    if (mode === "archived") {
+      data = data.filter((p) => p.status === "validata" || p.status === "rifiutata");
+    } else {
       data = data.filter((p) => p.status !== "validata" && p.status !== "rifiutata");
     }
+
+    if (statusFilter) {
+      data = data.filter((p) => p.status === statusFilter);
+    }
+
     if (!search.trim()) return data;
     const q = search.toLowerCase();
     return data.filter((p) =>
-      [p.id, p.drug, p.form, p.container, p.executor, p.station, p.status, p.priority, p.requestedAt, p.startedAt, p.finishedAt, String(p.errorRate), `${p.dispensed}`, `${p.target}`]
+      [p.id, p.drug, p.form, p.container, p.executor, p.station, p.status, p.priority,
+        p.requestedAt, p.startedAt, p.finishedAt, String(p.errorRate), `${p.dispensed}`, `${p.target}`]
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(q))
     );
-  }, [search, statusFilter, preparations, showArchived, dateFilter]);
+  }, [search, statusFilter, preparations, mode, dateFrom, dateTo]);
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
@@ -112,35 +125,71 @@ const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusF
   };
 
   const toggleAll = () => {
-    setSelected((prev) => (prev.size === paginatedData.length ? new Set() : new Set(paginatedData.map((p) => p.id))));
+    setSelected((prev) =>
+      prev.size === paginatedData.length ? new Set() : new Set(paginatedData.map((p) => p.id))
+    );
   };
 
-  const progressPercent = (dispensed: number, target: number) => Math.min((dispensed / target) * 100, 100);
+  const progressPercent = (dispensed: number, target: number) =>
+    Math.min((dispensed / target) * 100, 100);
 
   const progressColor = (status: Status, errorRate: number) => {
     if (errorRate > 2) return "bg-status-error";
-    if (status === "completata") return "bg-status-complete";
+    if (status === "completata" || status === "validata") return "bg-status-complete";
     if (status === "esecuzione") return "bg-status-waiting";
     return "bg-muted-foreground";
   };
 
   const thClass = "px-4 py-3 cursor-pointer select-none hover:text-foreground transition-colors";
 
+  // ── Empty state ──────────────────────────────────────────────────────────
+  if (sorted.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <PackageOpen className="h-7 w-7 text-muted-foreground" />
+          </div>
+          <p className="text-base font-medium text-foreground">
+            {mode === "archived" ? "Nessuna preparazione archiviata" : "Nessuna preparazione da valutare"}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {search
+              ? `Nessun risultato per "${search}"`
+              : mode === "archived"
+              ? "Le preparazioni validate o rifiutate appariranno qui."
+              : "Tutte le preparazioni sono state archiviate o non ne esistono per questa data."}
+          </p>
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="mt-1 text-xs text-primary underline-offset-2 hover:underline"
+            >
+              Cancella ricerca
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
-      {/* Header with search */}
+      {/* Header */}
       <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Checkbox
-            checked={selected.size === paginatedData.length && paginatedData.length > 0}
-            onCheckedChange={toggleAll}
-          />
+          {mode === "active" && (
+            <Checkbox
+              checked={selected.size === paginatedData.length && paginatedData.length > 0}
+              onCheckedChange={toggleAll}
+            />
+          )}
           <span className="text-sm text-muted-foreground">
-            Seleziona pagina ({paginatedData.length} di {sorted.length})
+            {mode === "active" ? "Seleziona pagina" : "Preparazioni archiviate"} ({paginatedData.length} di {sorted.length})
           </span>
         </div>
         <div className="flex items-center gap-3">
-          {selected.size > 0 && (() => {
+          {mode === "active" && selected.size > 0 && (() => {
             const validatable = [...selected].filter((id) => {
               const p = preparations.find((pr) => pr.id === id);
               return p && p.status !== "attesa" && p.status !== "esecuzione" && p.status !== "validata" && p.status !== "rifiutata";
@@ -158,7 +207,9 @@ const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusF
               </button>
             ) : null;
           })()}
-          <span className="text-sm text-muted-foreground">{selected.size} selezionate</span>
+          {mode === "active" && selected.size > 0 && (
+            <span className="text-sm text-muted-foreground">{selected.size} selezionate</span>
+          )}
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -176,7 +227,7 @@ const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusF
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              <th className="w-10 px-5 py-3" />
+              {mode === "active" && <th className="w-10 px-5 py-3" />}
               <th className={thClass} onClick={() => toggleSort("status")}>
                 <span className="inline-flex items-center gap-1">ID / Stato <SortIcon col="status" /></span>
               </th>
@@ -195,6 +246,9 @@ const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusF
               <th className={thClass} onClick={() => toggleSort("requestedAt")}>
                 <span className="inline-flex items-center gap-1">Tempistiche <SortIcon col="requestedAt" /></span>
               </th>
+              {mode === "archived" && (
+                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider">Motivo</th>
+              )}
               <th className="px-4 py-3">Azioni</th>
             </tr>
           </thead>
@@ -202,11 +256,17 @@ const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusF
             {paginatedData.map((p) => {
               const sc = statusConfig[p.status];
               const pc = priorityConfig[p.priority];
+              const rejectionReason = mode === "archived" ? getRejectionReason(p.id) : undefined;
               return (
-                <tr key={p.id} className="border-b border-border transition-colors last:border-0 hover:bg-secondary/50">
-                  <td className="px-5 py-4">
-                    <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} />
-                  </td>
+                <tr
+                  key={p.id}
+                  className="border-b border-border transition-colors last:border-0 hover:bg-secondary/50"
+                >
+                  {mode === "active" && (
+                    <td className="px-5 py-4">
+                      <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} />
+                    </td>
+                  )}
                   <td className="px-4 py-4">
                     <p className="font-semibold text-foreground">{p.id}</p>
                     <div className={`flex items-center gap-1 text-xs ${sc.className}`}>
@@ -271,38 +331,66 @@ const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusF
                       )}
                     </div>
                   </td>
+                  {mode === "archived" && (
+                    <td className="px-4 py-4">
+                      {rejectionReason ? (
+                        <Badge variant="outline" className="border-0 bg-status-error-bg text-[10px] font-medium text-status-error">
+                          {rejectionReason}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-4">
-                    {p.status !== "validata" && p.status !== "rifiutata" ? (
-                      <div className="flex items-center gap-1">
+                    {mode === "active" ? (
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {p.status !== "attesa" && p.status !== "esecuzione" ? (
                           <>
                             <button
                               onClick={() => validatePreparation(p.id)}
-                              className="rounded-md p-1.5 text-status-complete transition-colors hover:bg-status-complete-bg"
-                              title="Valida"
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-status-complete-bg px-3 py-1.5 text-xs font-semibold text-status-complete transition-colors hover:bg-status-complete/20"
+                              title="Valida preparazione"
                             >
                               <Check className="h-4 w-4" />
+                              Valida
                             </button>
                             <button
                               onClick={() => { setRejectTargetIds([p.id]); setRejectDialogOpen(true); }}
-                              className="rounded-md p-1.5 text-status-error transition-colors hover:bg-status-error-bg"
-                              title="Rifiuta"
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-status-error-bg px-3 py-1.5 text-xs font-semibold text-status-error transition-colors hover:bg-status-error/20"
+                              title="Rifiuta preparazione"
                             >
                               <X className="h-4 w-4" />
+                              Rifiuta
                             </button>
                           </>
                         ) : null}
-                        <button onClick={() => navigate(`/preparation/${p.id}`)} className="rounded-md p-1.5 text-primary transition-colors hover:bg-primary/10" title="Dettagli">
+                        <button
+                          onClick={() => navigate(`/preparation/${p.id}`)}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                          title="Vedi dettagli"
+                        >
                           <ArrowRight className="h-4 w-4" />
+                          Dettagli
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1">
-                        <Badge variant="outline" className={`text-[10px] border-0 ${p.status === "validata" ? "bg-status-complete-bg text-status-complete" : "bg-status-error-bg text-status-error"}`}>
-                          {statusConfig[p.status].label}
-                        </Badge>
-                        <button onClick={() => navigate(`/preparation/${p.id}`)} className="rounded-md p-1.5 text-primary transition-colors hover:bg-primary/10" title="Dettagli">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          onClick={() => undoPreparation(p.id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-status-progress-bg px-3 py-1.5 text-xs font-semibold text-status-progress transition-colors hover:bg-status-progress/20"
+                          title="Annulla validazione o rifiuto e ripristina lo stato precedente"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          Annulla
+                        </button>
+                        <button
+                          onClick={() => navigate(`/preparation/${p.id}`)}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                          title="Vedi dettagli"
+                        >
                           <ArrowRight className="h-4 w-4" />
+                          Dettagli
                         </button>
                       </div>
                     )}
@@ -314,7 +402,7 @@ const PreparationsTable = ({ statusFilter, showArchived, dateFilter }: { statusF
         </table>
       </div>
 
-      {/* Footer */}
+      {/* Footer / Pagination */}
       <div className="flex flex-col items-center justify-between gap-3 border-t border-border px-5 py-3 sm:flex-row">
         <p className="text-xs text-muted-foreground">
           Mostrando {(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, sorted.length)} di {sorted.length} preparazioni

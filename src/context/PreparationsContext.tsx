@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { preparations as initialPreparations, type Preparation, type Status, type Priority, type PrepType, photoAssets } from "@/data/preparations";
 
 export const rejectionReasons = [
@@ -145,6 +145,7 @@ interface PreparationsContextType {
   validatePreparation: (id: string) => void;
   rejectPreparation: (id: string, reason: RejectionReason) => void;
   getRejectionReason: (id: string) => RejectionReason | undefined;
+  undoPreparation: (id: string) => void;
 }
 
 const PreparationsContext = createContext<PreparationsContextType | null>(null);
@@ -158,22 +159,25 @@ export const usePreparations = () => {
 export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
   const [preps, setPreps] = useState<Preparation[]>(initialPreparations);
   const [rejectionMap, setRejectionMap] = useState<Record<string, RejectionReason>>({});
-  const counterRef = useRef(0);
+  const [previousStatusMap, setPreviousStatusMap] = useState<Record<string, Status>>({});
 
   const validatePreparation = useCallback((id: string) => {
     setPreps((prev) => {
-      const updated = prev.map((p) => (p.id === id ? { ...p, status: "validata" as const } : p));
-      // Add a new preparation to replace the validated one
-      counterRef.current += 1;
-      return [...updated, generatePreparation(counterRef.current)];
+      const target = prev.find((p) => p.id === id);
+      if (target) {
+        setPreviousStatusMap((m) => ({ ...m, [id]: target.status }));
+      }
+      return prev.map((p) => (p.id === id ? { ...p, status: "validata" as const } : p));
     });
   }, []);
 
   const rejectPreparation = useCallback((id: string, reason: RejectionReason) => {
     setPreps((prev) => {
-      const updated = prev.map((p) => (p.id === id ? { ...p, status: "rifiutata" as const } : p));
-      counterRef.current += 1;
-      return [...updated, generatePreparation(counterRef.current)];
+      const target = prev.find((p) => p.id === id);
+      if (target) {
+        setPreviousStatusMap((m) => ({ ...m, [id]: target.status }));
+      }
+      return prev.map((p) => (p.id === id ? { ...p, status: "rifiutata" as const } : p));
     });
     setRejectionMap((prev) => ({ ...prev, [id]: reason }));
   }, []);
@@ -183,8 +187,25 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
     [rejectionMap]
   );
 
+  const undoPreparation = useCallback((id: string) => {
+    setPreps((prev) => {
+      const previousStatus = previousStatusMap[id] ?? "completata";
+      return prev.map((p) => (p.id === id ? { ...p, status: previousStatus } : p));
+    });
+    setRejectionMap((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setPreviousStatusMap((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, [previousStatusMap]);
+
   return (
-    <PreparationsContext.Provider value={{ preparations: preps, validatePreparation, rejectPreparation, getRejectionReason }}>
+    <PreparationsContext.Provider value={{ preparations: preps, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation }}>
       {children}
     </PreparationsContext.Provider>
   );

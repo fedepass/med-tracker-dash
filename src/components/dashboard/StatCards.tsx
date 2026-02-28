@@ -33,14 +33,15 @@ const StatCard = ({ icon, value, label, colorClass, bgClass, active, onClick }: 
 interface StatCardsProps {
   activeStatus: Status | null;
   onStatusClick: (status: Status | null) => void;
-  dateFilter: string;
+  dateFrom: string;
+  dateTo: string;
 }
 
-const StatCards = ({ activeStatus, onStatusClick, dateFilter }: StatCardsProps) => {
+const StatCards = ({ activeStatus, onStatusClick, dateFrom, dateTo }: StatCardsProps) => {
   const { preparations } = usePreparations();
 
   const counts = useMemo(() => {
-    const forDate = preparations.filter((p) => p.date === dateFilter);
+    const forDate = preparations.filter((p) => p.date >= dateFrom && p.date <= dateTo && p.status !== "validata" && p.status !== "rifiutata");
     return {
       totale: forDate.length,
       attesa: forDate.filter((p) => p.status === "attesa").length,
@@ -48,7 +49,7 @@ const StatCards = ({ activeStatus, onStatusClick, dateFilter }: StatCardsProps) 
       completata: forDate.filter((p) => p.status === "completata").length,
       errore: forDate.filter((p) => p.status === "errore").length,
     };
-  }, [preparations, dateFilter]);
+  }, [preparations, dateFrom, dateTo]);
 
   const stats: { status: Status | null; icon: React.ReactNode; value: number; label: string; colorClass: string; bgClass: string }[] = [
     { status: null, icon: <List className="h-6 w-6" />, value: counts.totale, label: "Totale", colorClass: "text-primary", bgClass: "bg-primary/10" },
