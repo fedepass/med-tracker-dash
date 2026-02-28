@@ -22,9 +22,9 @@ const statusConfig: Record<Status, { icon: React.ReactNode; label: string; class
 };
 
 const priorityConfig: Record<Priority, { label: string; className: string }> = {
-  alta: { label: "Priorità Alta", className: "bg-status-error-bg text-status-error" },
-  media: { label: "Priorità Media", className: "bg-status-progress-bg text-status-progress" },
-  bassa: { label: "Priorità Bassa", className: "bg-status-complete-bg text-status-complete" },
+  alta: { label: "Alta", className: "bg-status-error-bg text-status-error" },
+  media: { label: "Media", className: "bg-status-progress-bg text-status-progress" },
+  bassa: { label: "Bassa", className: "bg-status-complete-bg text-status-complete" },
 };
 
 type SortKey = "id" | "status" | "priority" | "drug" | "dispensed" | "errorRate" | "executor" | "requestedAt";
