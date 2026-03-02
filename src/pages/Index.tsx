@@ -104,76 +104,17 @@ const Index = () => {
       <Navbar />
       <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
         {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Dashboard Preparazioni</h1>
-            <p className="text-sm text-muted-foreground">
-              Supervisione e validazione delle preparazioni farmaceutiche
-            </p>
-          </div>
-
-          {/* Date range controls */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Oggi button */}
-            <Button
-              variant={isToday ? "default" : "outline"}
-              size="sm"
-              onClick={setToday}
-              className="gap-1.5"
-            >
-              <CalendarCheck className="h-4 w-4" />
-              Oggi
-            </Button>
-
-            <span className="text-xs text-muted-foreground font-medium">Da</span>
-
-            {/* From picker */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <CalendarIcon className="h-4 w-4" />
-                  {format(dateFrom, "dd MMM yyyy", { locale: it })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  selected={dateFrom}
-                  onSelect={(d) => d && setDateRange(d, dateTo < d ? d : dateTo)}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
-
-            <span className="text-muted-foreground text-sm">→</span>
-
-            <span className="text-xs text-muted-foreground font-medium">A</span>
-
-            {/* To picker */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <CalendarIcon className="h-4 w-4" />
-                  {format(dateTo, "dd MMM yyyy", { locale: it })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  selected={dateTo}
-                  onSelect={(d) => d && setDateRange(dateFrom > d ? d : dateFrom, d)}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-foreground">Dashboard Preparazioni</h1>
+          <p className="text-sm text-muted-foreground">
+            Supervisione e validazione delle preparazioni farmaceutiche
+          </p>
         </div>
 
         {/* Tabs */}
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="mb-6 grid h-auto w-full grid-cols-2 rounded-xl border border-border bg-muted/40 p-1.5 sm:inline-flex sm:w-auto">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl border border-border bg-muted/40 p-1.5 sm:inline-flex sm:w-auto">
             <TabsTrigger
               value="da-valutare"
               className="gap-2 rounded-lg px-5 py-3 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -209,6 +150,62 @@ const Index = () => {
               </Badge>
             </TabsTrigger>
           </TabsList>
+
+          {/* Date range controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant={isToday ? "default" : "outline"}
+              size="sm"
+              onClick={setToday}
+              className="gap-1.5"
+            >
+              <CalendarCheck className="h-4 w-4" />
+              Oggi
+            </Button>
+
+            <span className="text-xs text-muted-foreground font-medium">Da</span>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <CalendarIcon className="h-4 w-4" />
+                  {format(dateFrom, "dd MMM yyyy", { locale: it })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={dateFrom}
+                  onSelect={(d) => d && setDateRange(d, dateTo < d ? d : dateTo)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+
+            <span className="text-muted-foreground text-sm">→</span>
+
+            <span className="text-xs text-muted-foreground font-medium">A</span>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <CalendarIcon className="h-4 w-4" />
+                  {format(dateTo, "dd MMM yyyy", { locale: it })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={dateTo}
+                  onSelect={(d) => d && setDateRange(dateFrom > d ? d : dateFrom, d)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          </div>
 
           {/* ── Tab: Da Valutare ── */}
           <TabsContent value="da-valutare" className="mt-0 space-y-6">
