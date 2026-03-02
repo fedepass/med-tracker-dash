@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import React from "react";
 import { preparations as initialPreparations, type Preparation, type Status, type Priority, type PrepType, photoAssets } from "@/data/preparations";
 
 export const rejectionReasons = [
@@ -143,6 +144,13 @@ interface PreparationsContextType {
   rejectPreparation: (id: string, reason: RejectionReason) => void;
   getRejectionReason: (id: string) => RejectionReason | undefined;
   undoPreparation: (id: string) => void;
+  barcodeMode: "detail" | "select";
+  toggleBarcodeMode: () => void;
+  barcodeSelectedIds: string[];
+  addBarcodeSelection: (id: string) => void;
+  clearBarcodeSelection: () => void;
+  tableSelected: Set<string>;
+  setTableSelected: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
 const PreparationsContext = createContext<PreparationsContextType | null>(null);
@@ -157,6 +165,23 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
   const [preps, setPreps] = useState<Preparation[]>(initialPreparations);
   const [rejectionMap, setRejectionMap] = useState<Record<string, RejectionReason>>({});
   const [previousStatusMap, setPreviousStatusMap] = useState<Record<string, Status>>({});
+  const [barcodeMode, setBarcodeMode] = useState<"detail" | "select">("detail");
+  const [barcodeSelectedIds, setBarcodeSelectedIds] = useState<string[]>([]);
+  const [tableSelected, setTableSelected] = useState<Set<string>>(new Set());
+
+  const toggleBarcodeMode = useCallback(() => {
+    setBarcodeMode((m) => (m === "detail" ? "select" : "detail"));
+    setBarcodeSelectedIds([]);
+  }, []);
+
+  const addBarcodeSelection = useCallback((id: string) => {
+    setBarcodeSelectedIds((prev) => prev.includes(id) ? prev : [...prev, id]);
+    setTableSelected((prev) => { const next = new Set(prev); next.add(id); return next; });
+  }, []);
+
+  const clearBarcodeSelection = useCallback(() => {
+    setBarcodeSelectedIds([]);
+  }, []);
 
   const validatePreparation = useCallback((id: string) => {
     setPreps((prev) => {
@@ -202,7 +227,11 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
   }, [previousStatusMap]);
 
   return (
-    <PreparationsContext.Provider value={{ preparations: preps, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation }}>
+    <PreparationsContext.Provider value={{
+      preparations: preps, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation,
+      barcodeMode, toggleBarcodeMode, barcodeSelectedIds, addBarcodeSelection, clearBarcodeSelection,
+      tableSelected, setTableSelected,
+    }}>
       {children}
     </PreparationsContext.Provider>
   );

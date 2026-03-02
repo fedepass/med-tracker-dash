@@ -1,7 +1,7 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 2.1
+**Version**: 2.7
 **Date**: 2026-03-02
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
@@ -20,6 +20,12 @@
 | 1.9 | 2026-02-28 | Click sulla riga della tabella seleziona/deseleziona la checkbox corrispondente (solo `mode="active"`); stopPropagation su checkbox e colonna azioni per evitare doppi toggle |
 | 2.0 | 2026-03-02 | RejectDialog: aggiunta prop `defaultReason`; alla apertura del popup per rifiuto di una preparazione in stato `errore`, il motivo viene preselezionato automaticamente (`Sovradosaggio` se `dispensed > target`, `Sottodosaggio` se `dispensed < target`); per preparazioni `completata` nessuna precompilazione |
 | 2.1 | 2026-03-02 | Rimossi motivi di rifiuto: "Paziente errato", "Etichetta errata", "Scadenza superata"; motivazioni rimanenti: Sovradosaggio, Sottodosaggio, Farmaco errato, Contaminazione, Contenitore errato, Diluente errato, Altro |
+| 2.2 | 2026-03-02 | Campo barcode nella Navbar reso funzionale: pressione Enter cerca la preparazione per ID; in modalità dettaglio naviga alla pagina del dettaglio; toast rosso ad alto contrasto se l'ID non viene trovato |
+| 2.3 | 2026-03-02 | Due modalità barcode: **Dettaglio** (ScanLine, default) naviga al dettaglio; **Selezione** (ListChecks) aggiunge la preparazione alla selezione multipla accumulando più scansioni; toggle con pulsante a sinistra del campo; badge contatore preparazioni selezionate; toast giallo se la preparazione è già in lista |
+| 2.4 | 2026-03-02 | Riga selezionata (sia da barcode che manualmente) evidenziata con sfondo blu `bg-primary/5` e bordo sinistro `border-l-2 border-l-primary`; preparazioni selezionate portate in cima alla lista (row pinning) indipendentemente dall'ordinamento corrente |
+| 2.5 | 2026-03-02 | Selezione persistente tra cambi di pagina e cambio di filtri; la selezione viene azzerata solo al termine di un'azione di validazione o rifiuto bulk |
+| 2.6 | 2026-03-02 | Stato `tableSelected: Set<string>` spostato in `PreparationsContext` per sincronizzazione cross-componente tra Navbar e PreparationsTable; `addBarcodeSelection` aggiorna direttamente `tableSelected` (eliminato useEffect asincrono); badge Navbar mostra il conteggio reale delle righe selezionate |
+| 2.7 | 2026-03-02 | Blocco selezione preparazioni archiviate: in modalità selezione barcode, la scansione di una preparazione con status `validata` o `rifiutata` mostra un toast giallo di avviso invece di aggiungerla alla lista; in modalità dettaglio la scansione apre sempre il dettaglio; nella selezione manuale da tabella, il click su righe archiviate è ignorato |
 
 ---
 
@@ -433,7 +439,10 @@ Stato:
 ```typescript
 {
   preparations: Preparation[],
-  rejectionMap: Record<string, RejectionReason>
+  rejectionMap: Record<string, RejectionReason>,
+  barcodeMode: "detail" | "select",
+  barcodeSelectedIds: string[],
+  tableSelected: Set<string>,
 }
 ```
 
@@ -443,7 +452,17 @@ validatePreparation(id: string): void
 rejectPreparation(id: string, reason: RejectionReason): void
 getRejectionReason(id: string): RejectionReason | undefined
 undoPreparation(id: string): void
+toggleBarcodeMode(): void
+addBarcodeSelection(id: string): void  // aggiunge a barcodeSelectedIds E tableSelected
+clearBarcodeSelection(): void
+setTableSelected: React.Dispatch<React.SetStateAction<Set<string>>>
 ```
+
+**Logica `barcodeMode`**: Due modalità — `"detail"` (default) in cui la scansione naviga al dettaglio; `"select"` in cui la scansione aggiunge l'ID a `barcodeSelectedIds` e `tableSelected`. Il toggle azzera `barcodeSelectedIds`.
+
+**Logica `addBarcodeSelection`**: Aggiorna direttamente entrambi gli state `barcodeSelectedIds` e `tableSelected` in modo sincrono, evitando disallineamenti che si verificavano con un `useEffect` asincrono.
+
+**Logica `tableSelected`**: Set condiviso tra Navbar e PreparationsTable. La Navbar lo usa per verificare se una preparazione è già selezionata prima di mostare il toast "già in lista"; la tabella lo usa per evidenziare le righe e applicare il row pinning.
 
 **Logica post-azione (validate/reject)**: Lo status della preparazione viene aggiornato (`validata` o `rifiutata`). Lo stato precedente viene salvato in `previousStatusMap` prima della modifica. Nessuna nuova preparazione viene generata automaticamente, in modo che i contatori della dashboard riflettano correttamente le azioni dell'utente.
 
@@ -454,10 +473,13 @@ undoPreparation(id: string): void
 | Pagina/Componente | Stato locale |
 |---|---|
 | `Index.tsx` | `tab`, `dateFrom`, `dateTo`, `statusFilter` (tutti via `useSearchParams`) |
-| `PreparationsTable.tsx` | `selected[]`, `searchQuery`, `sortKey`, `sortDir`, `currentPage` |
+| `PreparationsTable.tsx` | `searchQuery`, `sortKey`, `sortDir`, `currentPage` |
+| `Navbar.tsx` | `barcodeValue` (valore corrente del campo input, resettato dopo ogni ricerca) |
 | `Analytics.tsx` | `fromDate`, `toDate` |
 | `PreparationDetail.tsx` | `rejectDialogOpen` |
 | `Login.tsx` | `username`, `password`, `error` |
+
+> `tableSelected` (precedentemente stato locale di `PreparationsTable`) è stato spostato in `PreparationsContext` nella v2.6 per consentire la sincronizzazione con la Navbar.
 
 ---
 
@@ -996,12 +1018,38 @@ Layout minimale con:
       <NavLink to="/analytics">Analytics</NavLink>
     </nav>
 
-    <!-- Destra: barcode + search + notifiche + utente -->
+    <!-- Destra: barcode + notifiche + utente -->
     <div class="right-section flex items-center gap-3">
-      <Input placeholder="Scan barcode..." />     <!-- non funzionale -->
-      <Input placeholder="Cerca..." icon={Search} />
+
+      <!-- Toggle modalità barcode -->
+      <Tooltip>
+        <Button toggle onClick={toggleBarcodeMode}>
+          {barcodeMode === "select" ? <ListChecks /> : <ScanLine />}
+        </Button>
+        <TooltipContent>
+          {barcodeMode === "select"
+            ? "Modalità selezione multipla — clicca per tornare al dettaglio"
+            : "Modalità dettaglio — clicca per selezione multipla"}
+        </TooltipContent>
+      </Tooltip>
+
+      <!-- Campo barcode -->
+      <Input
+        icon={Barcode}
+        placeholder={barcodeMode === "select"
+          ? "Scansiona per aggiungere alla lista..."
+          : "Scansiona o inserisci barcode..."}
+        className={barcodeMode === "select" ? "bg-primary/5 border-primary/40" : "bg-secondary"}
+        onKeyDown={(e) => e.key === "Enter" && handleBarcodeSearch(value)}
+      />
+
+      <!-- Badge contatore (solo modalità select con almeno 1 selezionata) -->
+      {barcodeMode === "select" && tableSelected.size > 0 && (
+        <span class="badge">{tableSelected.size} selezionate</span>
+      )}
+
       <Button icon={Bell} class="relative">
-        <span class="badge red absolute" />        <!-- dot rosso -->
+        <span class="badge red absolute" />
       </Button>
       <div class="user-info flex items-center">
         <Avatar initials="MR" />
@@ -1014,6 +1062,29 @@ Layout minimale con:
   </div>
 </header>
 ```
+
+#### Ricerca Barcode — `handleBarcodeSearch(value)`
+
+Logica eseguita alla pressione di **Enter** nel campo barcode:
+
+```
+1. Normalizza il valore: trim + toUpperCase
+2. Cerca in preparations[] per corrispondenza esatta sull'ID
+   - Non trovato → toast rosso "Preparazione non trovata" (sfondo hsl(0,72%,50%), testo bianco)
+   - Trovato + modalità "detail" → navigate("/preparation/:id")
+   - Trovato + modalità "select":
+     a. status "validata" o "rifiutata" → toast giallo "già validata/rifiutata" (sfondo hsl(38,92%,50%), testo bianco)
+     b. già in tableSelected → toast giallo "già in lista"
+     c. altrimenti → addBarcodeSelection(id) + toast verde "aggiunto alla selezione"
+3. Resetta il campo input
+```
+
+**Toast style** (alta visibilità):
+| Tipo | Sfondo | Testo | Uso |
+|---|---|---|---|
+| Errore | `hsl(0, 72%, 50%)` rosso | bianco + `!opacity-90` su description | ID non trovato |
+| Warning | `hsl(38, 92%, 50%)` giallo | bianco + `!opacity-90` su description | già in lista / già archiviata |
+| Successo | default verde sonner | — | aggiunta avvenuta |
 
 #### NavLink (evidenziazione pagina attiva)
 
@@ -1109,9 +1180,21 @@ Implementazione: `[...filtered].sort((a, b) => ...)` lato client.
 - **Click sulla riga** → seleziona/deseleziona la checkbox corrispondente (comportamento toggle)
 - Checkbox in ogni riga → stesso effetto del click sulla riga (stopPropagation per evitare doppio toggle)
 - Checkbox header → seleziona/deseleziona tutti nella pagina corrente
-- Se `selected.length > 0`: mostra bottone "Valida (N)" nella barra header
+- **Preparazioni `validata` / `rifiutata`**: il click sulla riga è ignorato; non possono essere selezionate
+- Se `tableSelected.size > 0`: mostra bottone "Valida (N)" nella barra header
 - Solo le preparazioni con status `completata` o `errore` vengono incluse nella validazione bulk (le altre sono filtrate)
 - In `mode="archived"` la colonna checkbox e le azioni bulk **non sono presenti**
+- **Stato di selezione condiviso** (`tableSelected`) in `PreparationsContext`: persiste tra cambi di pagina, ordinamento e cambio di filtri; viene azzerato solo dopo validate/reject bulk
+- **Row highlight**: ogni riga con ID in `tableSelected` riceve classi `bg-primary/5 border-l-2 border-l-primary` (sfondo blu tenue + bordo sinistro primario); rimossa quando deselezionata
+- **Row pinning**: le righe selezionate vengono portate in cima alla lista (indipendentemente dall'ordinamento corrente). Logica:
+  ```typescript
+  const pinnedIds = sorted.filter(p => tableSelected.has(p.id)).map(p => p.id)
+  const displayData = [
+    ...sorted.filter(p => tableSelected.has(p.id)),
+    ...sorted.filter(p => !tableSelected.has(p.id)),
+  ]
+  ```
+- **Selezione da barcode**: aggiunta tramite `addBarcodeSelection(id)` in `PreparationsContext`; si riflette immediatamente nell'highlight e nel pinning della tabella
 
 #### Azioni per Riga
 

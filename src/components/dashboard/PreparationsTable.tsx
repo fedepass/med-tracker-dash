@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight,
@@ -42,8 +42,7 @@ interface PreparationsTableProps {
 
 const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: PreparationsTableProps) => {
   const navigate = useNavigate();
-  const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation } = usePreparations();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation, barcodeSelectedIds, tableSelected: selected, setTableSelected: setSelected } = usePreparations();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -111,14 +110,26 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
     });
   }, [filtered, sortKey, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  // Pin all selected rows at top (barcode or manual), only in active mode
+  const pinnedIds = mode === "active" ? sorted.filter((p) => selected.has(p.id)).map((p) => p.id) : [];
+  const displayData = useMemo(() => {
+    if (pinnedIds.length === 0) return sorted;
+    const pinned = pinnedIds.map((id) => sorted.find((p) => p.id === id)!);
+    const rest = sorted.filter((p) => !pinnedIds.includes(p.id));
+    return [...pinned, ...rest];
+  }, [sorted, pinnedIds]);
+
+  const totalPages = Math.max(1, Math.ceil(displayData.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedData = useMemo(() => {
     const start = (safeCurrentPage - 1) * pageSize;
-    return sorted.slice(start, start + pageSize);
-  }, [sorted, safeCurrentPage, pageSize]);
+    return displayData.slice(start, start + pageSize);
+  }, [displayData, safeCurrentPage, pageSize]);
+
 
   const toggleSelect = (id: string) => {
+    const prep = preparations.find((p) => p.id === id);
+    if (prep?.status === "validata" || prep?.status === "rifiutata") return;
     setSelected((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -187,7 +198,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
             />
           )}
           <span className="text-sm text-muted-foreground">
-            {mode === "active" ? "Seleziona pagina" : "Preparazioni archiviate"} ({paginatedData.length} di {sorted.length})
+            {mode === "active" ? "Seleziona pagina" : "Preparazioni archiviate"} ({paginatedData.length} di {displayData.length})
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -266,7 +277,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
                 <tr
                   key={p.id}
                   onClick={() => mode === "active" && toggleSelect(p.id)}
-                  className={`border-b border-border transition-colors last:border-0 hover:bg-secondary/50 ${mode === "active" ? "cursor-pointer" : ""}`}
+                  className={`border-b border-border transition-colors last:border-0 hover:bg-secondary/50 ${mode === "active" ? "cursor-pointer" : ""} ${selected.has(p.id) ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
                 >
                   {mode === "active" && (
                     <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
@@ -418,12 +429,12 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
       {/* Footer / Pagination */}
       <div className="flex flex-col items-center justify-between gap-3 border-t border-border px-5 py-3 sm:flex-row">
         <p className="text-xs text-muted-foreground">
-          Mostrando {(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, sorted.length)} di {sorted.length} preparazioni
+          Mostrando {(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, displayData.length)} di {displayData.length} preparazioni
         </p>
         <div className="flex items-center gap-1">
           <button
             disabled={safeCurrentPage <= 1}
-            onClick={() => { setCurrentPage((p) => p - 1); setSelected(new Set()); }}
+            onClick={() => setCurrentPage((p) => p - 1)}
             className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-40"
           >
             Precedente
@@ -431,7 +442,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <button
               key={page}
-              onClick={() => { setCurrentPage(page); setSelected(new Set()); }}
+              onClick={() => setCurrentPage(page)}
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 page === safeCurrentPage
                   ? "bg-primary text-primary-foreground"
@@ -443,7 +454,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
           ))}
           <button
             disabled={safeCurrentPage >= totalPages}
-            onClick={() => { setCurrentPage((p) => p + 1); setSelected(new Set()); }}
+            onClick={() => setCurrentPage((p) => p + 1)}
             className="rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-40"
           >
             Successivo
