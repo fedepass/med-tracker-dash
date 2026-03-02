@@ -1,8 +1,8 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 1.9
-**Date**: 2026-02-28
+**Version**: 2.1
+**Date**: 2026-03-02
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
 ### Changelog
@@ -18,6 +18,8 @@
 | 1.7 | 2026-02-27 | Fix contatore "Da Valutare": rimossa auto-generazione preparazione dopo validate/rifiuta; il contatore ora diminuisce correttamente alla validazione e aumenta all'annullamento |
 | 1.8 | 2026-02-28 | Titolo tab browser aggiornato da "Lovable App" a "Pharma Dashboard"; favicon sostituito con SVG custom (croce medica bianca su cerchio blu `#1e40af`); meta tag OG/Twitter aggiornati e rimossi riferimenti a Lovable |
 | 1.9 | 2026-02-28 | Click sulla riga della tabella seleziona/deseleziona la checkbox corrispondente (solo `mode="active"`); stopPropagation su checkbox e colonna azioni per evitare doppi toggle |
+| 2.0 | 2026-03-02 | RejectDialog: aggiunta prop `defaultReason`; alla apertura del popup per rifiuto di una preparazione in stato `errore`, il motivo viene preselezionato automaticamente (`Sovradosaggio` se `dispensed > target`, `Sottodosaggio` se `dispensed < target`); per preparazioni `completata` nessuna precompilazione |
+| 2.1 | 2026-03-02 | Rimossi motivi di rifiuto: "Paziente errato", "Etichetta errata", "Scadenza superata"; motivazioni rimanenti: Sovradosaggio, Sottodosaggio, Farmaco errato, Contaminazione, Contenitore errato, Diluente errato, Altro |
 
 ---
 
@@ -226,12 +228,9 @@ type RejectionReason =
   | "Sovradosaggio"
   | "Sottodosaggio"
   | "Farmaco errato"
-  | "Paziente errato"
   | "Contaminazione"
-  | "Etichetta errata"
   | "Contenitore errato"
   | "Diluente errato"
-  | "Scadenza superata"
   | "Altro"
 ```
 
@@ -1224,10 +1223,19 @@ const forDate = preparations.filter(p =>
 interface RejectDialogProps {
   open: boolean
   preparationIds: string[]
+  defaultReason?: RejectionReason   // preseleziona il motivo all'apertura
   onConfirm: (reason: RejectionReason) => void
   onCancel: () => void
 }
 ```
+
+**Logica `defaultReason`** (calcolata in `PreparationsTable` prima di aprire il dialog):
+- Solo per preparazioni con `status === "errore"`
+- `dispensed > target` → `"Sovradosaggio"`
+- `dispensed < target && dispensed > 0` → `"Sottodosaggio"`
+- Qualsiasi altro caso (status `completata`, ecc.) → nessuna precompilazione
+
+Il valore rimane modificabile dall'utente prima di confermare.
 
 #### Layout
 
@@ -1248,12 +1256,9 @@ interface RejectDialogProps {
     <SelectItem value="Sovradosaggio">Sovradosaggio</SelectItem>
     <SelectItem value="Sottodosaggio">Sottodosaggio</SelectItem>
     <SelectItem value="Farmaco errato">Farmaco errato</SelectItem>
-    <SelectItem value="Paziente errato">Paziente errato</SelectItem>
     <SelectItem value="Contaminazione">Contaminazione</SelectItem>
-    <SelectItem value="Etichetta errata">Etichetta errata</SelectItem>
     <SelectItem value="Contenitore errato">Contenitore errato</SelectItem>
     <SelectItem value="Diluente errato">Diluente errato</SelectItem>
-    <SelectItem value="Scadenza superata">Scadenza superata</SelectItem>
     <SelectItem value="Altro">Altro</SelectItem>
   </Select>
 

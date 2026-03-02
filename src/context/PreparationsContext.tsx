@@ -5,12 +5,9 @@ export const rejectionReasons = [
   "Sovradosaggio",
   "Sottodosaggio",
   "Farmaco errato",
-  "Paziente errato",
   "Contaminazione",
-  "Etichetta errata",
   "Contenitore errato",
   "Diluente errato",
-  "Scadenza superata",
   "Altro",
 ] as const;
 
