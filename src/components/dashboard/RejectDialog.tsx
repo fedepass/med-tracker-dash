@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,12 +20,17 @@ import { rejectionReasons, type RejectionReason } from "@/context/PreparationsCo
 interface RejectDialogProps {
   open: boolean;
   preparationIds: string[];
+  defaultReason?: RejectionReason;
   onConfirm: (reason: RejectionReason) => void;
   onCancel: () => void;
 }
 
-const RejectDialog = ({ open, preparationIds, onConfirm, onCancel }: RejectDialogProps) => {
-  const [reason, setReason] = useState<RejectionReason | "">("");
+const RejectDialog = ({ open, preparationIds, defaultReason, onConfirm, onCancel }: RejectDialogProps) => {
+  const [reason, setReason] = useState<RejectionReason | "">(defaultReason ?? "");
+
+  useEffect(() => {
+    if (open) setReason(defaultReason ?? "");
+  }, [open, defaultReason]);
 
   const handleConfirm = () => {
     if (reason) {

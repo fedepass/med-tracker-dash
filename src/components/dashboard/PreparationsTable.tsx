@@ -49,6 +49,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTargetIds, setRejectTargetIds] = useState<string[]>([]);
+  const [rejectDefaultReason, setRejectDefaultReason] = useState<import("@/context/PreparationsContext").RejectionReason | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -363,7 +364,12 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
                               Valida
                             </button>
                             <button
-                              onClick={() => { setRejectTargetIds([p.id]); setRejectDialogOpen(true); }}
+                              onClick={() => {
+                                const def = p.status === "errore" && p.dispensed > p.target ? "Sovradosaggio" : p.status === "errore" && p.dispensed < p.target && p.dispensed > 0 ? "Sottodosaggio" : undefined;
+                                setRejectDefaultReason(def);
+                                setRejectTargetIds([p.id]);
+                                setRejectDialogOpen(true);
+                              }}
                               className="inline-flex items-center gap-1.5 rounded-lg bg-status-error-bg px-3 py-1.5 text-xs font-semibold text-status-error transition-colors hover:bg-status-error/20"
                               title="Rifiuta preparazione"
                             >
@@ -448,13 +454,15 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
       <RejectDialog
         open={rejectDialogOpen}
         preparationIds={rejectTargetIds}
+        defaultReason={rejectDefaultReason}
         onConfirm={(reason) => {
           rejectTargetIds.forEach((rid) => rejectPreparation(rid, reason));
           setRejectDialogOpen(false);
           setRejectTargetIds([]);
+          setRejectDefaultReason(undefined);
           setSelected(new Set());
         }}
-        onCancel={() => { setRejectDialogOpen(false); setRejectTargetIds([]); }}
+        onCancel={() => { setRejectDialogOpen(false); setRejectTargetIds([]); setRejectDefaultReason(undefined); }}
       />
     </div>
   );
