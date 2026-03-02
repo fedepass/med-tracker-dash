@@ -1,7 +1,7 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 2.7
+**Version**: 2.8
 **Date**: 2026-03-02
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
@@ -26,6 +26,7 @@
 | 2.5 | 2026-03-02 | Selezione persistente tra cambi di pagina e cambio di filtri; la selezione viene azzerata solo al termine di un'azione di validazione o rifiuto bulk |
 | 2.6 | 2026-03-02 | Stato `tableSelected: Set<string>` spostato in `PreparationsContext` per sincronizzazione cross-componente tra Navbar e PreparationsTable; `addBarcodeSelection` aggiorna direttamente `tableSelected` (eliminato useEffect asincrono); badge Navbar mostra il conteggio reale delle righe selezionate |
 | 2.7 | 2026-03-02 | Blocco selezione preparazioni archiviate: in modalità selezione barcode, la scansione di una preparazione con status `validata` o `rifiutata` mostra un toast giallo di avviso invece di aggiungerla alla lista; in modalità dettaglio la scansione apre sempre il dettaglio; nella selezione manuale da tabella, il click su righe archiviate è ignorato |
+| 2.8 | 2026-03-02 | Filtro data (Oggi / Da / A) spostato sulla stessa riga del tab switcher Da Valutare / Archivio; su desktop i tab sono a sinistra e i controlli data a destra (`flex-row justify-between`); su mobile si impilano in due righe (`flex-col`) |
 
 ---
 
@@ -563,22 +564,35 @@ All'avvio dell'app, AuthContext legge `sessionStorage.auth` per ripristinare la 
 ```
 <Navbar />
 <main>
-  <!-- Header: titolo + DatePicker (condiviso tra tab) -->
-  <div class="header-row">
+  <!-- Header: solo titolo e sottotitolo -->
+  <div class="header">
     <h1>Dashboard Preparazioni</h1>
-    <DatePicker />    <!-- Selettore data, aggiorna query param ?date -->
+    <p>Supervisione e validazione delle preparazioni farmaceutiche</p>
   </div>
 
-  <!-- Tab switcher -->
+  <!-- Riga tab + filtro data (stessa linea) -->
   <Tabs value={tab} onValueChange={setTab}>
-    <TabsList>
-      <TabsTrigger value="da-valutare">
-        <ClipboardList /> Da Valutare <Badge>{activeDayPreps.length}</Badge>
-      </TabsTrigger>
-      <TabsTrigger value="archivio">
-        <Archive /> Archivio <Badge>{archivedDayPreps.length}</Badge>
-      </TabsTrigger>
-    </TabsList>
+    <div class="flex-row justify-between">   <!-- flex-col su mobile, flex-row su desktop -->
+
+      <!-- Tab switcher (sinistra) -->
+      <TabsList>
+        <TabsTrigger value="da-valutare">
+          <ClipboardList /> Da Valutare <Badge>{activeDayPreps.length}</Badge>
+        </TabsTrigger>
+        <TabsTrigger value="archivio">
+          <Archive /> Archivio <Badge>{archivedDayPreps.length}</Badge>
+        </TabsTrigger>
+      </TabsList>
+
+      <!-- Filtro data (destra) -->
+      <div class="date-controls">
+        <Button Oggi />
+        <span>Da</span> <DatePicker from />
+        <span>→</span>
+        <span>A</span>  <DatePicker to />
+      </div>
+
+    </div>
 
     <!-- Tab 1: Da Valutare -->
     <TabsContent value="da-valutare">
@@ -614,7 +628,7 @@ Il componente `<Tabs>` di shadcn/ui funge da selettore principale. Entrambe le t
 
 #### Filtro Data (condiviso tra tab)
 
-Controlli posizionati nell'header, sopra le tab. Composto da tre elementi affiancati:
+Controlli posizionati **sulla stessa riga del tab switcher**, a destra dei tab su desktop, sotto i tab su mobile. Composto da tre elementi affiancati:
 
 ```
 [CalendarCheck  Oggi]  Da [📅 gg mmm aaaa]  →  A [📅 gg mmm aaaa]
