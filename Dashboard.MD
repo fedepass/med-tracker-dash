@@ -1,8 +1,8 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 2.8
-**Date**: 2026-03-02
+**Version**: 2.9
+**Date**: 2026-03-07
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
 ### Changelog
@@ -27,6 +27,12 @@
 | 2.6 | 2026-03-02 | Stato `tableSelected: Set<string>` spostato in `PreparationsContext` per sincronizzazione cross-componente tra Navbar e PreparationsTable; `addBarcodeSelection` aggiorna direttamente `tableSelected` (eliminato useEffect asincrono); badge Navbar mostra il conteggio reale delle righe selezionate |
 | 2.7 | 2026-03-02 | Blocco selezione preparazioni archiviate: in modalità selezione barcode, la scansione di una preparazione con status `validata` o `rifiutata` mostra un toast giallo di avviso invece di aggiungerla alla lista; in modalità dettaglio la scansione apre sempre il dettaglio; nella selezione manuale da tabella, il click su righe archiviate è ignorato |
 | 2.8 | 2026-03-02 | Filtro data (Oggi / Da / A) spostato sulla stessa riga del tab switcher Da Valutare / Archivio; su desktop i tab sono a sinistra e i controlli data a destra (`flex-row justify-between`); su mobile si impilano in due righe (`flex-col`) |
+| 2.9 | 2026-03-07 | **Sistema multi-ruolo**: aggiunto utente `admin/admin123` (ruolo `admin`) affiancato a `pharma/ivone` (ruolo `operator`); `AuthContext` espone `isAdmin`, `role`, `displayName`; Navbar mostra il link "Configurazione" solo agli admin |
+| 2.9 | 2026-03-07 | **Pagina Configurazione** (`/config`, protetta admin): tab Cappe (CRUD con tipologia, descrizione, regole farmaci esclusi/obbligatori, attiva/inattiva), tab Farmaci (catalogo con ricerca, import da API esterna ChEMBL/RxNorm/custom, gestione categorie), tab Strategia assegnazione (5 strategie: urgency, load_balance, fifo, lifo, round_robin) |
+| 2.9 | 2026-03-07 | **Colonna Quantità** tabella: sostituito `dispensed/target ml` con `labelData.dosage` (dosaggio clinico del farmaco, es. "2 g"); barra progresso mantiene dispensed/target per la visualizzazione percentuale |
+| 2.9 | 2026-03-07 | **Dettaglio preparazione**: sezione Quantitativi mostra "Dosaggio farmaco" = `labelData.dosage` e "Volume finale" = `labelData.volume`; header subtitle allineato con tabella |
+| 2.9 | 2026-03-07 | **Servizio sync HL7** (`Database/sync`): aggiunto motore di assegnazione automatica cappe (basato su `assignment_config` + `cappa_drug_rules`); normalizzazione unità HL7 (SODCL→mEq, KCLT→mEq, MGSO4→g, UI/IU→UI); endpoint REST `/config/*` per CRUD cappe, farmaci, categorie, strategia, lookup esterno farmaci |
+| 2.9 | 2026-03-07 | **Schema DB**: tabella `stations` rimossa; sostituita da `cappe_config` (con `tipologia`, `description`, `active`); aggiunte `cappa_drug_rules`, `assignment_config`, `drug_categories`, `drug_api_config`, `drugs_catalog` |
 
 ---
 
@@ -44,12 +50,14 @@
    - 8.2 [Dashboard (Index)](#82-dashboard-index)
    - 8.3 [Dettaglio Preparazione](#83-dettaglio-preparazione)
    - 8.4 [Analytics](#84-analytics)
-   - 8.5 [404 Not Found](#85-404-not-found)
+   - 8.5 [Config (Configurazione)](#85-config-configurazione)
+   - 8.6 [404 Not Found](#86-404-not-found)
 9. [Componenti Condivisi](#9-componenti-condivisi)
 10. [Sistema di Stile e Tema](#10-sistema-di-stile-e-tema)
 11. [Dati Statici e Logica di Generazione](#11-dati-statici-e-logica-di-generazione)
 12. [Configurazione Build e Tools](#12-configurazione-build-e-tools)
 13. [Requisiti Non Funzionali](#13-requisiti-non-funzionali)
+14. [Servizio Sync HL7](#14-servizio-sync-hl7)
 
 ---
 
@@ -147,19 +155,14 @@ Tutta l'interfaccia utente è in **italiano**. Il codice sorgente è in inglese/
 ## 3. Struttura del Progetto
 
 ```
-project-root/
+project-root/                      # med-tracker-dash-v2 (frontend React)
 ├── public/
 ├── src/
 │   ├── assets/                    # Immagini JPG (9 foto preparazioni)
-│   │   ├── farmaco1.jpg
-│   │   ├── farmaco2.jpg
-│   │   ├── diluente1.jpg
-│   │   ├── diluente2.jpg
-│   │   ├── contenitore1.jpg
-│   │   ├── contenitore2.jpg
-│   │   ├── preparazione1.jpg
-│   │   ├── preparazione2.jpg
-│   │   └── preparazione3.jpg
+│   │   ├── farmaco1.jpg … farmaco2.jpg
+│   │   ├── diluente1.jpg … diluente2.jpg
+│   │   ├── contenitore1.jpg … contenitore2.jpg
+│   │   └── preparazione1.jpg … preparazione3.jpg
 │   ├── components/
 │   │   ├── dashboard/
 │   │   │   ├── FiltersBar.tsx     # (non usato nell'app attuale)
@@ -168,19 +171,9 @@ project-root/
 │   │   │   ├── RejectDialog.tsx
 │   │   │   └── StatCards.tsx
 │   │   ├── ui/                    # ~60 componenti shadcn/ui
-│   │   │   └── [accordion, alert, avatar, badge, button, card,
-│   │   │       calendar, carousel, chart, checkbox, collapsible,
-│   │   │       command, context-menu, dialog, drawer, dropdown-menu,
-│   │   │       form, hover-card, input, input-otp, label, menubar,
-│   │   │       navigation-menu, pagination, popover, progress,
-│   │   │       radio-group, resizable, scroll-area, select, separator,
-│   │   │       sheet, sidebar, skeleton, slider, sonner, switch,
-│   │   │       table, tabs, textarea, toast, toaster, toggle,
-│   │   │       toggle-group, tooltip, use-toast, aspect-ratio,
-│   │   │       alert-dialog, breadcrumb].tsx
 │   │   └── NavLink.tsx
 │   ├── context/
-│   │   ├── AuthContext.tsx
+│   │   ├── AuthContext.tsx        # multi-ruolo: admin + operator
 │   │   └── PreparationsContext.tsx
 │   ├── data/
 │   │   └── preparations.ts        # Tipi + dati iniziali + helpers
@@ -192,6 +185,7 @@ project-root/
 │   │   └── generateLabelPdf.ts    # Generazione PDF etichetta 80×80mm
 │   ├── pages/
 │   │   ├── Analytics.tsx
+│   │   ├── Config.tsx             # [NEW] Pagina configurazione (solo admin)
 │   │   ├── Index.tsx
 │   │   ├── Login.tsx
 │   │   ├── NotFound.tsx
@@ -209,11 +203,21 @@ project-root/
 ├── package.json
 ├── postcss.config.js
 ├── tailwind.config.ts
-├── tsconfig.json
-├── tsconfig.app.json
-├── tsconfig.node.json
+├── tsconfig.json, tsconfig.app.json, tsconfig.node.json
 ├── vite.config.ts
 └── vitest.config.ts
+
+Database/                          # Backend & DB (separato)
+├── schema.sql                     # Schema MySQL pharmar_dashboard
+├── seed.sql                       # Dati iniziali
+└── sync/                          # Servizio Node.js HL7 sync (porta 3001)
+    ├── src/
+    │   ├── index.ts               # HTTP server + endpoint /config/*
+    │   ├── sync.ts                # Ciclo sync HL7 + autoAssignCappa()
+    │   ├── mapper.ts              # Mapping HL7→Preparation + normalizzazione unità
+    │   └── db.ts                  # Pool MySQL2
+    └── scripts/
+        └── assign-cappe.js        # Script one-shot assegnazione cappe esistenti
 ```
 
 ---
@@ -372,17 +376,29 @@ File: `src/App.tsx`
     <Route path="/analytics" element={
       <ProtectedRoute><Analytics /></ProtectedRoute>
     } />
+    <Route path="/config" element={
+      <AdminRoute><Config /></AdminRoute>
+    } />
     <Route path="*" element={<NotFound />} />
   </Routes>
 </BrowserRouter>
 ```
 
-### 5.2 ProtectedRoute
+### 5.2 ProtectedRoute e AdminRoute
 
 ```typescript
+// Richiede autenticazione (qualsiasi ruolo)
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
+
+// Richiede ruolo admin; altri utenti vengono reindirizzati a /
+const AdminRoute = ({ children }) => {
+  const { isAuthenticated, isAdmin } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 ```
@@ -488,37 +504,58 @@ setTableSelected: React.Dispatch<React.SetStateAction<Set<string>>>
 
 File: `src/context/AuthContext.tsx`
 
-### 7.1 Credenziali (Hardcoded)
+### 7.1 Utenti e Ruoli (Hardcoded)
 
-```
-Username: pharma
-Password: ivone
+```typescript
+type UserRole = "admin" | "operator"
+
+const USERS: Record<string, { password: string; role: UserRole; displayName: string }> = {
+  admin:  { password: "admin123", role: "admin",    displayName: "Amministratore" },
+  pharma: { password: "ivone",    role: "operator", displayName: "Dr. Marco Rossi" },
+}
 ```
 
-### 7.2 Flusso Login
+| Username | Password | Ruolo | Display Name | Accesso /config |
+|---|---|---|---|---|
+| `admin` | `admin123` | `admin` | Amministratore | Sì |
+| `pharma` | `ivone` | `operator` | Dr. Marco Rossi | No (redirect a `/`) |
+
+### 7.2 Stato AuthContext
+
+```typescript
+{
+  isAuthenticated: boolean,
+  username: string | null,
+  role: UserRole | null,         // "admin" | "operator"
+  isAdmin: boolean,              // shorthand: role === "admin"
+  displayName: string | null,    // nome visualizzato in Navbar
+}
+```
+
+### 7.3 Flusso Login
 
 1. Utente inserisce username e password in `/login`
 2. Viene chiamato `login(username, password)` dall'AuthContext
 3. Se le credenziali corrispondono:
    - `sessionStorage.setItem("auth", "1")`
    - `sessionStorage.setItem("auth_user", username)`
-   - Stato aggiornato: `isAuthenticated = true`
+   - Stato aggiornato: `isAuthenticated = true`, `role`, `displayName` settati
    - Redirect a `/`
 4. Se errate: viene mostrato messaggio di errore nel form
 
-### 7.3 Flusso Logout
+### 7.4 Flusso Logout
 
 1. Chiama `logout()` dall'AuthContext
 2. Cancella `sessionStorage.auth` e `sessionStorage.auth_user`
-3. `isAuthenticated = false`
+3. `isAuthenticated = false`, `role = null`, `displayName = null`
 
-### 7.4 Persistenza
+### 7.5 Persistenza
 
 `sessionStorage` — la sessione è valida finché la scheda del browser rimane aperta.
 
-### 7.5 Inizializzazione
+### 7.6 Inizializzazione
 
-All'avvio dell'app, AuthContext legge `sessionStorage.auth` per ripristinare la sessione dopo un refresh della pagina.
+All'avvio dell'app, AuthContext legge `sessionStorage.auth` e `sessionStorage.auth_user` per ripristinare la sessione e ricavare il ruolo dalla mappa `USERS`.
 
 ---
 
@@ -773,9 +810,9 @@ Tabella con colonne: Ora, Quantità, Unità, Motivo. Visibile solo se `supplemen
 
 #### Sezione Quantità
 
-- Volume Target: `{target} ml`
-- Volume Erogato: `{dispensed} ml`
-- Barra progresso: `(dispensed / target) * 100`%
+- Dosaggio farmaco: `{labelData.dosage}` (es. "2 g") — dato clinico della prescrizione
+- Volume finale: `{labelData.volume || target + " ml"}` (es. "100 ml")
+- Barra progresso Erogato: `(dispensed / target) * 100`% — visibile solo per status `esecuzione`, `completata`, `errore`
 - Tasso Errore: `{errorRate}%` — rosso se `> 2`, giallo se `> 0`, verde se `= 0`
 
 #### Sezione Dati Etichetta
@@ -997,7 +1034,124 @@ Mostra tutte le preparazioni filtrate per data range.
 
 ---
 
-### 8.5 404 Not Found
+### 8.5 Config (Configurazione)
+
+**File**: `src/pages/Config.tsx`
+**Route**: `/config` (protetta admin — `AdminRoute`)
+
+Pagina di amministrazione del sistema, accessibile solo agli utenti con ruolo `admin`. Organizzata in tre tab principali.
+
+#### Tab 1 — Cappe
+
+Gestione delle cappe di preparazione (`cappe_config` nel DB).
+
+**Elementi UI**:
+- Griglia di card, una per cappa
+- Ogni card mostra: nome, badge tipologia (biologica / chimica / sterile / custom), descrizione, stato attiva/inattiva, lista regole farmaci
+- Bottone "Nuova cappa" → dialog di creazione
+- Icona matita → dialog di modifica (nome, tipologia, descrizione, flag attiva)
+- Icona cestino → eliminazione con conferma
+- Sezione "Regole Farmaci": lista badge "escluso"/"obbligatorio" + aggiunta nuova regola (input farmaco + select tipo + Add); eliminazione regola con `×`
+
+**Tipi**:
+```typescript
+interface DrugRule {
+  id: number; cappaId: number; drugName: string; ruleType: "excluded" | "mandatory"
+}
+interface Cappa {
+  id: number; name: string;
+  tipologia: "biologica" | "chimica" | "sterile" | "custom";
+  description: string | null; active: boolean; drugRules: DrugRule[]
+}
+```
+
+**Endpoint API** (via `/sync-api` proxy → porta 3001):
+| Metodo | URL | Azione |
+|---|---|---|
+| GET | `/config/cappe` | Elenco cappe con regole |
+| POST | `/config/cappe` | Crea cappa |
+| PUT | `/config/cappe/:id` | Modifica cappa |
+| DELETE | `/config/cappe/:id` | Elimina cappa |
+| POST | `/config/cappe/:id/drug-rules` | Aggiunge regola farmaco |
+| DELETE | `/config/drug-rules/:id` | Elimina regola farmaco |
+
+---
+
+#### Tab 2 — Farmaci
+
+Gestione del catalogo farmaci (`drugs_catalog`) e delle categorie (`drug_categories`), con integrazione API esterna per auto-compilazione codice e categoria.
+
+**Sezioni**:
+
+**A) Configurazione API esterna** (collassabile):
+- Selettore provider: `ChEMBL` (EBI), `RxNorm` (NLM), `Custom`
+- ChEMBL: URL informativa, link alla documentazione
+- RxNorm: URL informativa, link alla documentazione
+- Custom: campo URL base, campo API Key opzionale
+- Bottone "Salva configurazione"
+
+**B) Catalogo farmaci**:
+- Tabella con colonne: Nome, Codice ATC/RxCUI, Categoria, Azioni (modifica / elimina)
+- Campo ricerca testo filtra in tempo reale
+- Bottone "Nuovo farmaco" → `DrugDialog`
+
+**C) Gestione categorie**:
+- Lista chip delle categorie esistenti (`drug_categories`) con bottone `×` per eliminazione
+- Input + bottone "Aggiungi categoria"
+
+**DrugDialog** (modale di creazione/modifica):
+- Campo "Nome farmaco" + bottone "Cerca" → chiama `/config/drug-lookup?name=`
+- Lista risultati cliccabili: click su un risultato precompila nome, codice, categoria
+- Campo "Codice" (monospace, ATC o RxCUI)
+- Campo "Categoria" con autocomplete sui nomi delle categorie esistenti
+- Bottone "Salva"
+
+**Lookup esterno** (endpoint `/config/drug-lookup?name=`):
+| Provider | API chiamata | Codice restituito | Categoria |
+|---|---|---|---|
+| ChEMBL | `ebi.ac.uk/chembl/api/data/molecule.json?pref_name__icontains=…` | ATC level5 (es. `J01CA04`) | Derivata dalla prima lettera ATC (`J`→Antiinfettivi) |
+| RxNorm | `rxnav.nlm.nih.gov/REST/drugs.json?name=…` | RxCUI | TTY del gruppo |
+| Custom | `base_url?name=…` (con API key header se configurata) | dipende dal provider | dipende dal provider |
+
+**Endpoint API**:
+| Metodo | URL | Azione |
+|---|---|---|
+| GET | `/config/drug-api` | Legge config provider |
+| PUT | `/config/drug-api` | Salva config provider |
+| GET | `/config/drug-lookup?name=` | Proxy lookup esterno (max 8 risultati) |
+| GET | `/config/categories` | Elenco categorie |
+| POST | `/config/categories` | Crea categoria |
+| DELETE | `/config/categories/:id` | Elimina categoria |
+| GET | `/config/drugs` | Elenco catalogo farmaci |
+| POST | `/config/drugs` | Aggiunge farmaco |
+| PUT | `/config/drugs/:id` | Modifica farmaco |
+| DELETE | `/config/drugs/:id` | Elimina farmaco |
+
+---
+
+#### Tab 3 — Strategia Assegnazione
+
+Selettore visuale della strategia di assegnazione automatica delle prescrizioni HL7 alle cappe (`assignment_config` nel DB).
+
+**5 strategie** (card selezionabili con icona + titolo + descrizione):
+
+| Strategia | Icona | Comportamento |
+|---|---|---|
+| `urgency` | AlertCircle | Cappa con meno preparazioni attive (default) |
+| `load_balance` | Scale | Come urgency, bilanciamento carico |
+| `fifo` | ArrowDownUp | Cappa che ha ricevuto l'ultimo assegnamento meno recentemente |
+| `lifo` | ArrowUpDown | Cappa che ha ricevuto l'ultimo assegnamento più recentemente |
+| `round_robin` | RefreshCw | Ciclico in ordine per ID |
+
+**Endpoint API**:
+| Metodo | URL | Azione |
+|---|---|---|
+| GET | `/config/assignment` | Legge strategia corrente |
+| PUT | `/config/assignment` | Salva strategia |
+
+---
+
+### 8.6 404 Not Found
 
 **File**: `src/pages/NotFound.tsx`
 **Route**: `*`
@@ -1030,6 +1184,7 @@ Layout minimale con:
     <nav class="hidden md:flex">
       <NavLink to="/">Preparazioni</NavLink>
       <NavLink to="/analytics">Analytics</NavLink>
+      {isAdmin && <NavLink to="/config"><Settings /> Configurazione</NavLink>}
     </nav>
 
     <!-- Destra: barcode + notifiche + utente -->
@@ -1066,10 +1221,10 @@ Layout minimale con:
         <span class="badge red absolute" />
       </Button>
       <div class="user-info flex items-center">
-        <Avatar initials="MR" />
+        <Avatar initials={initials da displayName} />
         <div>
-          <p>Dr. Marco Rossi</p>
-          <p class="text-muted text-xs">Supervisore</p>
+          <p>{displayName}</p>               <!-- es. "Dr. Marco Rossi" o "Amministratore" -->
+          <p class="text-muted text-xs">{role}</p>   <!-- "admin" o "operator" -->
         </div>
       </div>
     </div>
@@ -1135,11 +1290,13 @@ interface PreparationsTableProps {
 | 0 | Checkbox | Select row | no |
 | 1 | ID / Stato | `{id}` + Badge status + Badge priority | sì (status) |
 | 2 | Richiesta | `{drug}` + `{container}` | sì (drug) |
-| 3 | Quantità | Progress bar + `{dispensed}/{target} ml` | sì (dispensed%) |
+| 3 | Quantità | `{labelData.dosage}` (es. "2 g") + Progress bar dispensed/target | sì (dispensed%) |
 | 4 | Errore % | `{errorRate}%` (rosso se >2, giallo se >0) | sì (errorRate) |
-| 5 | Postazione | `{station}` | sì (executor) |
+| 5 | Postazione | `{station}` (nome cappa) | sì (executor) |
 | 6 | Tempistiche | `Richiesta: {requestedAt}` / `Inizio: {startedAt}` / `Fine: {finishedAt}` | sì (requestedAt) |
 | 7 | Azioni | Icone Valida / Rifiuta / Dettagli | no |
+
+> **Nota v2.9**: la colonna Quantità mostra `labelData.dosage` (dosaggio clinico del farmaco, es. "2 g", "175 mEq") anziché `dispensed/target ml`. La barra di progresso continua a usare `dispensed/target` per la percentuale visiva. Il fallback è `${dispensed}ml` se `dosage` è vuoto.
 
 #### Colonne della Tabella — Modalità `archived`
 
@@ -1780,7 +1937,7 @@ Hook: `use-mobile.tsx` rileva breakpoint 768px con `window.matchMedia`.
 
 | Problema | Descrizione |
 |---|---|
-| Credenziali hardcoded | `pharma`/`ivone` nel codice sorgente |
+| Credenziali hardcoded | `admin/admin123` e `pharma/ivone` nel codice sorgente |
 | No HTTPS enforcement | Non gestito lato frontend |
 | sessionStorage non cifrato | Credenziali in chiaro |
 | No CSRF protection | Nessun token di validazione |
@@ -1804,14 +1961,102 @@ Hook: `use-mobile.tsx` rileva breakpoint 768px con `window.matchMedia`.
 
 ---
 
+---
+
+## 14. Servizio Sync HL7
+
+**Directory**: `Database/sync/`
+**Porta**: 3001 (HTTP)
+**Proxy Vite**: `/sync-api` → `http://localhost:3001`
+
+Il servizio Node.js TypeScript è responsabile di:
+1. Importare periodicamente le prescrizioni dal ServizioHL7 (porta 3000)
+2. Mapparle in preparazioni nel DB MySQL (`pharmar_dashboard`)
+3. Esporre API REST per il frontend (configurazione, dati preparazioni, trigger sync)
+
+### 14.1 Endpoint HTTP
+
+| Metodo | URL | Descrizione |
+|---|---|---|
+| GET | `/preparations` | Elenco preparazioni con JOIN executor, cappa, label |
+| POST | `/sync` | Trigger manuale sincronizzazione HL7 |
+| GET/PUT | `/config/assignment` | Strategia assegnazione cappe |
+| GET/POST/PUT/DELETE | `/config/cappe` e `/config/cappe/:id` | CRUD cappe |
+| POST | `/config/cappe/:id/drug-rules` | Aggiunge regola farmaco a cappa |
+| DELETE | `/config/drug-rules/:id` | Elimina regola farmaco |
+| GET/PUT | `/config/drug-api` | Config provider API farmaci |
+| GET | `/config/drug-lookup?name=` | Proxy lookup esterno farmaci |
+| GET/POST/DELETE | `/config/categories` e `/config/categories/:id` | CRUD categorie |
+| GET/POST/PUT/DELETE | `/config/drugs` e `/config/drugs/:id` | CRUD catalogo farmaci |
+
+### 14.2 Assegnazione Automatica Cappe
+
+Il motore `autoAssignCappa(drugName)` in `sync.ts` viene invocato ad ogni nuova prescrizione (quando l'HL7 non specifica esplicitamente una cappa).
+
+**Algoritmo**:
+1. Legge `strategy` da `assignment_config` (default: `urgency`)
+2. Recupera tutte le cappe attive con `active_count` (preps in attesa/esecuzione) e `last_assigned_at`
+3. Filtra le cappe con regola `excluded` per il farmaco corrente
+4. Privilegia le cappe con regola `mandatory` per il farmaco (se esistono)
+5. Applica la strategia di ordinamento:
+
+| Strategia | Criterio |
+|---|---|
+| `urgency` / `load_balance` | Cappa con meno `active_count` |
+| `fifo` | Cappa con `last_assigned_at` più vecchio |
+| `lifo` | Cappa con `last_assigned_at` più recente |
+| `round_robin` | Cappa successiva per ID rispetto all'ultima usata |
+
+### 14.3 Normalizzazione Unità HL7
+
+Il file `mapper.ts` contiene la mappa `UNIT_LABELS` che converte codici HL7 in unità cliniche leggibili:
+
+| Codice HL7 | Unità visualizzata |
+|---|---|
+| `SODCL` | `mEq` (sodio cloruro) |
+| `KCLT` | `mEq` (potassio cloruro) |
+| `MGSO4` | `g` (magnesio solfato) |
+| `UI`, `IU` | `UI` |
+| `mg`, `g`, `mcg`, `ml`, `mmol` | invariati |
+
+La funzione `normalizeDosage(value, unit)` produce output come `"2 g"`, `"175 mEq"`, `"50 UI"`.
+
+### 14.4 Schema DB (tabelle principali v2.9)
+
+| Tabella | Scopo |
+|---|---|
+| `preparations` | Preparazioni farmaceutiche (tabella principale) |
+| `preparation_labels` | Dati etichetta 1:1 con preparations (paziente, dosaggio, via, volume…) |
+| `preparation_supplementary_doses` | Dosi supplementari |
+| `preparation_photos` | Riferimenti foto componenti |
+| `preparation_rejections` | Log storico rifiuti |
+| `executors` | Esecutori / farmacisti |
+| `cappe_config` | Cappe di preparazione (nome, tipologia, description, active) |
+| `cappa_drug_rules` | Regole farmaci per cappa (excluded / mandatory) |
+| `assignment_config` | Strategia assegnazione (record singolo id=1) |
+| `rejection_reasons` | Motivazioni standard rifiuto |
+| `hl7_sync_log` | Log sincronizzazioni HL7 |
+| `drug_categories` | Categorie farmaci (lookup/autocomplete) |
+| `drug_api_config` | Config provider API esterna lookup farmaci (record singolo id=1) |
+| `drugs_catalog` | Catalogo farmaci configurabili (nome, codice ATC, categoria) |
+
+> **Nota**: la tabella `stations` è stata rimossa. Il campo `station_id` in `preparations` è stato rinominato `cappa_id` con FK verso `cappe_config(id)`.
+
+---
+
 ## Appendice A — Flusso Completo dell'Applicazione
 
 ```
 [Browser] → /login
-     ↓ (credenziali valide)
-[sessionStorage.auth=1]
+     ↓ (admin/admin123 oppure pharma/ivone)
+[sessionStorage.auth=1, auth_user=username]
      ↓
 [/] Dashboard  (?tab=da-valutare  ←→  ?tab=archivio)
+     │
+     └─ [NavLink Configurazione — solo admin] → /config
+            - Tab Cappe (CRUD cappe + regole farmaci)
+            - Tab Farmaci (catalogo + API lookup + categorie)
+            - Tab Strategia assegnazione
      │
      ├─ TAB "Da Valutare"  (?tab=da-valutare)
      │   - StatCards (5 schede filtro: Totale / Attesa / Esecuzione / Completate / Errori)

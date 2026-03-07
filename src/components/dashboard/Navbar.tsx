@@ -1,25 +1,90 @@
-import { Search, Bell, Barcode, BarChart3, Home, ListChecks, ScanLine } from "lucide-react";
+import { Search, Bell, Barcode, BarChart3, Home, ListChecks, ScanLine, CloudDownload, Loader2, Settings } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { usePreparations } from "@/context/PreparationsContext";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+const HL7_BASE_URL = "http://127.0.0.1:3000";
+const SYNC_API_URL = "/sync-api";
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAdmin, displayName, role } = useAuth();
   const {
     preparations,
+    refreshPreparations,
     barcodeMode, toggleBarcodeMode,
     barcodeSelectedIds, addBarcodeSelection, clearBarcodeSelection,
     tableSelected,
   } = usePreparations();
   const [barcodeValue, setBarcodeValue] = useState("");
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const prevPendingRef = useRef(0);
   const isAnalytics = location.pathname === "/analytics";
   const isHome = location.pathname === "/";
+  const isConfig = location.pathname === "/config";
+
+  // Polling prescrizioni PENDING ogni 30s
+  useEffect(() => {
+    const fetchPending = async () => {
+      try {
+        const res = await fetch(`${HL7_BASE_URL}/api/prescriptions?status=PENDING&raw=true`);
+        if (!res.ok) return;
+        const data: unknown[] = await res.json();
+        const count = data.length;
+        setPendingCount(count);
+        if (count > prevPendingRef.current) {
+          const newOnes = count - prevPendingRef.current;
+          toast.info(`${newOnes} nuova prescrizione HL7${newOnes > 1 ? "i" : ""} in attesa`, {
+            description: "Clicca il pulsante di importazione per caricarle nel database",
+            duration: 6000,
+          });
+        }
+        prevPendingRef.current = count;
+      } catch {
+        // silenzioso — il servizio potrebbe non essere raggiungibile
+      }
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleImportPending = async () => {
+    setSyncLoading(true);
+    try {
+      const res = await fetch(`${SYNC_API_URL}/sync`, { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result: { fetched: number; imported: number; skipped: number; errors: number } = await res.json();
+      if (result.imported > 0) {
+        toast.success(`${result.imported} prescrizioni importate`, {
+          description: `Ricevute: ${result.fetched} · Già presenti: ${result.skipped} · Errori: ${result.errors}`,
+          duration: 5000,
+        });
+      } else {
+        toast.info("Nessuna nuova prescrizione da importare", {
+          description: `Ricevute: ${result.fetched} · Già presenti: ${result.skipped}`,
+          duration: 4000,
+        });
+      }
+      // Aggiorna contatore e ricarica preparazioni dal DB
+      prevPendingRef.current = 0;
+      setPendingCount(0);
+      await refreshPreparations();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error("Errore importazione", { description: msg, duration: 5000 });
+    } finally {
+      setSyncLoading(false);
+    }
+  };
 
   const handleBarcodeSearch = (value: string) => {
     const trimmed = value.trim().toUpperCase();
@@ -89,6 +154,17 @@ const Navbar = () => {
             >
               <BarChart3 className="h-4 w-4" /> Analytics
             </Link>
+            {isAdmin && (
+              <Link
+                to="/config"
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                  isConfig ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <Settings className="h-4 w-4" /> Configurazione
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -138,18 +214,52 @@ const Navbar = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-4">
-          <button className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-status-error" />
-          </button>
+        <div className="flex items-center gap-2">
+          {/* Campanella con badge prescrizioni PENDING */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                <Bell className="h-5 w-5" />
+                {pendingCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-status-error text-[10px] font-bold text-white">
+                    {pendingCount > 9 ? "9+" : pendingCount}
+                  </span>
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {pendingCount > 0 ? `${pendingCount} prescrizioni HL7 in attesa` : "Nessuna prescrizione in attesa"}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Bottone importazione nel DB locale */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleImportPending}
+                disabled={syncLoading}
+                className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
+              >
+                {syncLoading
+                  ? <Loader2 className="h-5 w-5 animate-spin" />
+                  : <CloudDownload className="h-5 w-5" />
+                }
+                {pendingCount > 0 && !syncLoading && (
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Importa prescrizioni HL7 nel database locale</TooltipContent>
+          </Tooltip>
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">MR</AvatarFallback>
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                {displayName ? displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'U'}
+              </AvatarFallback>
             </Avatar>
             <div className="hidden md:block">
-              <p className="text-sm font-medium text-foreground">Dr. Marco Rossi</p>
-              <p className="text-xs text-muted-foreground">Supervisore</p>
+              <p className="text-sm font-medium text-foreground">{displayName ?? 'Utente'}</p>
+              <p className="text-xs text-muted-foreground">{role === 'admin' ? 'Amministratore' : 'Operatore'}</p>
             </div>
           </div>
         </div>

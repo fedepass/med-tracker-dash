@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Index from "./pages/Index";
 import PreparationDetail from "./pages/PreparationDetail";
 import Analytics from "./pages/Analytics";
+import Config from "./pages/Config";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -16,6 +17,13 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
+
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isAdmin } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
@@ -32,6 +40,7 @@ const App = () => (
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/preparation/:id" element={<ProtectedRoute><PreparationDetail /></ProtectedRoute>} />
               <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+              <Route path="/config" element={<AdminRoute><Config /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </PreparationsProvider>

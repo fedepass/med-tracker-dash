@@ -85,7 +85,11 @@ const PreparationDetail = () => {
                   <h1 className="text-2xl font-bold text-foreground">{prep.id}</h1>
                   <Badge variant="outline" className={`border-0 text-xs font-medium ${pc.className}`}>{pc.label}</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">{prep.drug} · {prep.form} · {prep.container}</p>
+                <p className="text-sm text-muted-foreground">
+                  {prep.drug}
+                  {prep.labelData.dosage && <> · <span className="font-medium text-foreground">{prep.labelData.dosage}</span></>}
+                  {prep.container && <> · {prep.container}</>}
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -230,19 +234,32 @@ const PreparationDetail = () => {
               </h2>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Target</span>
-                  <span className="font-medium text-foreground">{prep.target}ml</span>
+                  <span className="text-muted-foreground">Dosaggio farmaco</span>
+                  <span className="font-medium text-foreground">
+                    {prep.labelData.dosage || "—"}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Erogato</span>
-                  <span className="font-medium text-foreground">{prep.dispensed}ml</span>
+                  <span className="text-muted-foreground">Volume finale</span>
+                  <span className="font-medium text-foreground">
+                    {prep.labelData.volume || `${prep.target} ml`}
+                  </span>
                 </div>
-                <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full transition-all ${prep.errorRate > 2 ? "bg-status-error" : "bg-status-complete"}`}
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
+                {(prep.status === "esecuzione" || prep.status === "completata" || prep.status === "errore") && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Erogato</span>
+                      <span className="font-medium text-foreground">{prep.dispensed} ml</span>
+                    </div>
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full rounded-full transition-all ${prep.errorRate > 2 ? "bg-status-error" : "bg-status-complete"}`}
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Errore</span>
                   <span className={`font-semibold ${prep.errorRate > 2 ? "text-status-error" : prep.errorRate > 0 ? "text-status-progress" : "text-muted-foreground"}`}>
@@ -259,7 +276,7 @@ const PreparationDetail = () => {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Tot. supplementare</span>
                       <span className="font-medium text-foreground">
-                        +{prep.supplementaryDoses.reduce((s, d) => s + d.amount, 0).toFixed(1)}ml
+                        +{prep.supplementaryDoses.reduce((s, d) => s + d.amount, 0).toFixed(1)} ml
                       </span>
                     </div>
                   </>

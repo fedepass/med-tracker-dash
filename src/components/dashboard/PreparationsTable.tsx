@@ -302,7 +302,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
                   </td>
                   <td className="px-4 py-4">
                     <p className="mb-1 text-sm font-medium text-foreground">
-                      {p.dispensed}ml / {p.target}ml
+                      {p.labelData.dosage || `${p.dispensed}ml`}
                     </p>
                     <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
                       <div
