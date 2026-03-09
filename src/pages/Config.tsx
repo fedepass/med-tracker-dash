@@ -25,7 +25,8 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const SYNC_API = "/sync-api";
+const SYNC_API = "/sync-api";   // mutazioni config + drug-lookup (sync service locale)
+const EXT_API  = "/ext-api";    // letture dati (API esterna pharmar-api)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -528,12 +529,12 @@ export default function Config() {
 
   const fetchCappe = useCallback(async () => {
     try {
-      const res = await fetch(`${SYNC_API}/config/cappe`);
+      const res = await fetch(`${EXT_API}/cappe`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: Cappa[] = await res.json();
       setCappe(data);
     } catch {
-      toast.error("Impossibile caricare le cappe dal server di sincronizzazione");
+      toast.error("Impossibile caricare le cappe");
     } finally {
       setLoadingCappe(false);
     }
@@ -552,7 +553,7 @@ export default function Config() {
 
   const fetchDrugs = useCallback(async () => {
     try {
-      const res = await fetch(`${SYNC_API}/config/drugs`);
+      const res = await fetch(`${EXT_API}/drugs`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setDrugs(await res.json());
     } catch {
@@ -564,7 +565,7 @@ export default function Config() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch(`${SYNC_API}/config/categories`);
+      const res = await fetch(`${EXT_API}/drugs/categories`);
       if (res.ok) setCategories(await res.json());
     } catch { /* silenzioso */ }
   }, []);

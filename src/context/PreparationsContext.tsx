@@ -21,11 +21,15 @@ function resolvePhoto(p: { type: string; label: string; assetKey?: string; barco
 }
 
 async function fetchPreparationsFromAPI(): Promise<Preparation[]> {
-  const res = await fetch("/sync-api/preparations");
+  const res = await fetch("/ext-api/preparations?limit=300");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const raw: any[] = await res.json();
+  const json = await res.json();
+  // L'API esterna restituisce { data: [...], total, limit, offset }
+  const raw: any[] = Array.isArray(json) ? json : (json.data ?? []);
   return raw.map((r) => ({
     ...r,
+    // L'API esterna restituisce station come oggetto { id, name, tipologia }
+    station: typeof r.station === "object" ? (r.station?.name ?? null) : r.station,
     photos: (r.photos ?? []).map(resolvePhoto),
   })) as Preparation[];
 }

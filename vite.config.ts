@@ -28,6 +28,8 @@ function syncDaemonPlugin() {
   };
 }
 
+const EXT_API_KEY = "6fe02f93e500352fb85ed5aa3b3c20f79f10258a95f02c08c5720cdc4579f7a2";
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   base: mode === "production" ? "/med-tracker-dash/" : "/",
@@ -36,6 +38,18 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     hmr: { overlay: false },
     proxy: {
+      // API esterna PharmAR — aggiunge automaticamente x-api-key (server-side, non esposta al browser)
+      "/ext-api": {
+        target: "http://127.0.0.1:3002",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ext-api/, "/api/v1"),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq) => {
+            proxyReq.setHeader("x-api-key", EXT_API_KEY);
+          });
+        },
+      },
+      // Sync service locale — solo per mutazioni Config e trigger sync
       "/sync-api": {
         target: "http://127.0.0.1:3001",
         changeOrigin: true,
