@@ -1,7 +1,7 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 3.1
+**Version**: 3.2
 **Date**: 2026-03-09
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
@@ -25,7 +25,7 @@
 | 2.4 | 2026-03-02 | Riga selezionata (sia da barcode che manualmente) evidenziata con sfondo blu `bg-primary/5` e bordo sinistro `border-l-2 border-l-primary`; preparazioni selezionate portate in cima alla lista (row pinning) indipendentemente dall'ordinamento corrente |
 | 2.5 | 2026-03-02 | Selezione persistente tra cambi di pagina e cambio di filtri; la selezione viene azzerata solo al termine di un'azione di validazione o rifiuto bulk |
 | 2.6 | 2026-03-02 | Stato `tableSelected: Set<string>` spostato in `PreparationsContext` per sincronizzazione cross-componente tra Navbar e PreparationsTable; `addBarcodeSelection` aggiorna direttamente `tableSelected` (eliminato useEffect asincrono); badge Navbar mostra il conteggio reale delle righe selezionate |
-| 2.7 | 2026-03-02 | Blocco selezione preparazioni archiviate: in modalità selezione barcode, la scansione di una preparazione con status `validata` o `rifiutata` mostra un toast giallo di avviso invece di aggiungerla alla lista; in modalità dettaglio la scansione apre sempre il dettaglio; nella selezione manuale da tabella, il click su righe archiviate è ignorato |
+| 2.7 | 2026-03-02 | Blocco selezione preparazioni archiviate: in modalità selezione barcode, la scansione di una preparazione con `validationStatus !== null` mostra un toast giallo di avviso invece di aggiungerla alla lista; in modalità dettaglio la scansione apre sempre il dettaglio; nella selezione manuale da tabella, il click su righe archiviate è ignorato |
 | 2.8 | 2026-03-02 | Filtro data (Oggi / Da / A) spostato sulla stessa riga del tab switcher Da Valutare / Archivio; su desktop i tab sono a sinistra e i controlli data a destra (`flex-row justify-between`); su mobile si impilano in due righe (`flex-col`) |
 | 2.9 | 2026-03-07 | **Sistema multi-ruolo**: aggiunto utente `admin/admin123` (ruolo `admin`) affiancato a `pharma/ivone` (ruolo `operator`); `AuthContext` espone `isAdmin`, `role`, `displayName`; Navbar mostra il link "Configurazione" solo agli admin |
 | 2.9 | 2026-03-07 | **Pagina Configurazione** (`/config`, protetta admin): tab Cappe (CRUD con tipologia, descrizione, regole farmaci esclusi/obbligatori, attiva/inattiva), tab Farmaci (catalogo con ricerca, import da API esterna ChEMBL/RxNorm/custom, gestione categorie), tab Strategia assegnazione (5 strategie: urgency, load_balance, fifo, lifo, round_robin) |
@@ -42,6 +42,13 @@
 | 3.1 | 2026-03-09 | **Validazione/rifiuto persistente**: `validatePreparation`, `rejectPreparation` e `undoPreparation` ora chiamano `PATCH /preparations/:id` per salvare il cambio di stato nel DB; aggiunta colonna `rejection_reason VARCHAR(100)` alla tabella `preparations`; l'API accetta e restituisce `rejectionReason` in PATCH e GET |
 | 3.1 | 2026-03-09 | **Fix sessione auth**: `AuthContext` inizializza `isAuthenticated`, `username` e `role` da `sessionStorage` tramite lazy initializer; la sessione viene ripristinata al refresh della pagina senza richiedere nuovo login |
 | 3.1 | 2026-03-09 | **Fix rejectionMap**: al caricamento delle preparazioni dall'API, `rejectionMap` viene ripopolato dal campo `rejectionReason` restituito dal server; i motivi di rifiuto non vengono più persi al refresh |
+| 3.1 | 2026-03-09 | **SPA routing GitHub Pages**: aggiunto `public/404.html` con redirect trick (path salvato in `sessionStorage`); `index.html` ripristina il path con `history.replaceState` prima del mount di React; `/login` e tutti i sotto-percorsi funzionano correttamente su GitHub Pages |
+| 3.1 | 2026-03-09 | **Tab Da Valutare**: preparazioni con `validationStatus` non null (validate/rifiutate) escluse sia dal totale del badge che dalla tabella; rimangono visibili solo nell'Archivio |
+| 3.2 | 2026-03-09 | **Refactor: separazione status / validationStatus**: `status` ora ha solo 4 valori (`attesa`, `esecuzione`, `completata`, `errore`); aggiunto tipo `ValidationStatus = "validata" \| "rifiutata" \| null` come campo distinto; interfaccia `Preparation` aggiornata con campo `validationStatus`; DB: aggiunta colonna `validation_status ENUM('validata','rifiutata') NULL`, dati migrati, enum `status` ridotto a 4 valori |
+| 3.2 | 2026-03-09 | **API aggiornata per validationStatus**: entrambe le query SELECT restituiscono `validationStatus`; PATCH accetta e valida `validationStatus` e `rejectionReason`; `ALLOWED_STATUS` ridotto a 4 valori, aggiunto `ALLOWED_VALIDATION` |
+| 3.2 | 2026-03-09 | **PreparationsTable**: nuova colonna "Validazione" visibile in entrambe le tab; `statusConfig` ridotto a 4 valori; aggiunto `validationConfig` per badge validata/rifiutata; filtraggio archivio/attivo basato su `validationStatus` (non su `status`); bulk validate e selezione riga bloccata se `validationStatus !== null`; prop `validationFilter` aggiunta |
+| 3.2 | 2026-03-09 | **PreparationDetail**: pulsanti Valida/Rifiuta/Annulla e badge validazione basati su `prep.validationStatus` (non più su `prep.status`); `statusConfig` ridotto a 4 valori |
+| 3.2 | 2026-03-09 | **Analytics**: `STATUS_COLORS` e `STATUS_LABELS` ridotti a 4 valori; contatori KPI e completion rate non includono più `status==="validata"` |
 
 ---
 
@@ -254,7 +261,11 @@ File: `src/data/preparations.ts`
 ### 4.1 Tipi Union
 
 ```typescript
-type Status = "completata" | "esecuzione" | "errore" | "attesa" | "validata" | "rifiutata"
+// Stato workflow della preparazione (4 valori)
+type Status = "completata" | "esecuzione" | "errore" | "attesa"
+
+// Esito della validazione farmaceutica (campo separato da Status)
+type ValidationStatus = "validata" | "rifiutata" | null
 
 type Priority = "alta" | "media" | "bassa"
 
@@ -303,7 +314,8 @@ interface LabelData {
 
 interface Preparation {
   id: string                    // es. "RX-2847"
-  status: Status
+  status: Status                // stato workflow (attesa/esecuzione/completata/errore)
+  validationStatus: ValidationStatus  // esito validazione (validata/rifiutata/null)
   priority: Priority
   prepType: PrepType
   drug: string                  // nome farmaco + dosaggio
@@ -437,6 +449,7 @@ I filtri della dashboard sono salvati come query params dell'URL:
 | `dateFrom` | string (YYYY-MM-DD) | `?dateFrom=2026-02-01` | oggi |
 | `dateTo` | string (YYYY-MM-DD) | `?dateTo=2026-02-27` | oggi |
 | `status` | Status | `?status=completata` | — (azzerato al cambio tab) |
+| `validation` | ValidationStatus | `?validation=validata` | — (usato solo in Archivio) |
 | `tab` | "da-valutare" \| "archivio" | `?tab=archivio` | "da-valutare" |
 
 Questo permette deep linking e supporto al tasto Back del browser.
@@ -506,9 +519,9 @@ setTableSelected: React.Dispatch<React.SetStateAction<Set<string>>>
 
 **Logica `tableSelected`**: Set condiviso tra Navbar e PreparationsTable. La Navbar lo usa per verificare se una preparazione è già selezionata prima di mostare il toast "già in lista"; la tabella lo usa per evidenziare le righe e applicare il row pinning.
 
-**Logica post-azione (validate/reject)**: Lo status della preparazione viene aggiornato (`validata` o `rifiutata`). Lo stato precedente viene salvato in `previousStatusMap` prima della modifica. Nessuna nuova preparazione viene generata automaticamente, in modo che i contatori della dashboard riflettano correttamente le azioni dell'utente.
+**Logica post-azione (validate/reject)**: Il campo `validationStatus` della preparazione viene impostato a `"validata"` o `"rifiutata"` (il campo `status` rimane invariato). L'aggiornamento avviene in modo ottimistico (UI immediata) e viene persistito via `PATCH /preparations/:id`. La preparazione sparisce dalla tab "Da Valutare" e appare nell'Archivio.
 
-**Logica `undoPreparation`**: Ripristina la preparazione allo stato registrato in `previousStatusMap[id]` (default: `"completata"` se non trovato). Rimuove il motivo di rifiuto da `rejectionMap` e pulisce `previousStatusMap`. La preparazione torna visibile nella tab "Da Valutare". La preparazione generata automaticamente al momento della validazione/rifiuto rimane nell'elenco come entità separata.
+**Logica `undoPreparation`**: Imposta `validationStatus = null` e rimuove il motivo da `rejectionMap`. Chiama `PATCH /preparations/:id` per persistere l'annullamento. La preparazione torna visibile nella tab "Da Valutare".
 
 ### 6.4 Stato Locale
 
@@ -2143,6 +2156,8 @@ La funzione `normalizeDosage(value, unit)` produce output come `"2 g"`, `"175 mE
 | `drugs_catalog` | Catalogo farmaci configurabili (nome, codice ATC, categoria) |
 
 > **Nota**: la tabella `stations` è stata rimossa. Il campo `station_id` in `preparations` è stato rinominato `cappa_id` con FK verso `cappe_config(id)`.
+>
+> **v3.2**: la tabella `preparations` ha due nuove colonne: `rejection_reason VARCHAR(100) NULL` (aggiunta in v3.1) e `validation_status ENUM('validata','rifiutata') NULL DEFAULT NULL` (aggiunta in v3.2). L'enum `status` è stato ridotto a 4 valori: `ENUM('completata','esecuzione','errore','attesa')`. I record già presenti con `status IN ('validata','rifiutata')` sono stati migrati a `status='completata'` con `validation_status` impostato di conseguenza.
 
 ---
 
@@ -2165,15 +2180,16 @@ La funzione `normalizeDosage(value, unit)` produce output come `"2 g"`, `"175 mE
      │   - PreparationsTable mode="active"
      │   - Filtra per data, status (via StatCards), ricerca testuale
      │   │
-     │   ├─ [Azione Valida riga] → validatePreparation(id) → genera nuova prep
-     │   ├─ [Azione Rifiuta riga] → RejectDialog → rejectPreparation(id, reason)
+     │   ├─ [Azione Valida riga] → validatePreparation(id) → sets validationStatus="validata" + PATCH API
+     │   ├─ [Azione Rifiuta riga] → RejectDialog → rejectPreparation(id, reason) → sets validationStatus="rifiutata" + PATCH API
      │   ├─ [Valida selezionati bulk] → validatePreparation(id) × N
      │   └─ [Clicca ArrowRight] → /preparation/:id
      │
      ├─ TAB "Archivio"  (?tab=archivio)
-     │   - Schede riepilogo: Validate (verde) / Rifiutate (rosso) — cliccabili per filtrare
-     │   - PreparationsTable mode="archived"
-     │   - Colonna "Motivo" visibile per le preparazioni rifiutate
+     │   - Mostra preparazioni con validationStatus !== null
+     │   - Schede riepilogo: Validate (verde) / Rifiutate (rosso) — cliccabili per filtrare per validationStatus
+     │   - PreparationsTable mode="archived" con colonne "Validazione" e "Motivo"
+     │   - [Annulla] → undoPreparation(id) → sets validationStatus=null + PATCH API
      │   └─ [Clicca ArrowRight] → /preparation/:id
      │
      ├─ [/preparation/:id] → Dettaglio Preparazione
