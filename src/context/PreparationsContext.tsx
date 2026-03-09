@@ -96,22 +96,28 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
   const validatePreparation = useCallback((id: string) => {
     setPreps((prev) => {
       const target = prev.find((p) => p.id === id);
-      if (target) {
-        setPreviousStatusMap((m) => ({ ...m, [id]: target.status }));
-      }
+      if (target) setPreviousStatusMap((m) => ({ ...m, [id]: target.status }));
       return prev.map((p) => (p.id === id ? { ...p, status: "validata" as const } : p));
     });
+    extFetch(`/preparations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "validata" }),
+    }).catch(() => {});
   }, []);
 
   const rejectPreparation = useCallback((id: string, reason: RejectionReason) => {
     setPreps((prev) => {
       const target = prev.find((p) => p.id === id);
-      if (target) {
-        setPreviousStatusMap((m) => ({ ...m, [id]: target.status }));
-      }
+      if (target) setPreviousStatusMap((m) => ({ ...m, [id]: target.status }));
       return prev.map((p) => (p.id === id ? { ...p, status: "rifiutata" as const } : p));
     });
     setRejectionMap((prev) => ({ ...prev, [id]: reason }));
+    extFetch(`/preparations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "rifiutata", rejectionReason: reason }),
+    }).catch(() => {});
   }, []);
 
   const getRejectionReason = useCallback(
@@ -120,20 +126,15 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const undoPreparation = useCallback((id: string) => {
-    setPreps((prev) => {
-      const previousStatus = previousStatusMap[id] ?? "completata";
-      return prev.map((p) => (p.id === id ? { ...p, status: previousStatus } : p));
-    });
-    setRejectionMap((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-    setPreviousStatusMap((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    const previousStatus = previousStatusMap[id] ?? "completata";
+    setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, status: previousStatus } : p)));
+    setRejectionMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    setPreviousStatusMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    extFetch(`/preparations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: previousStatus }),
+    }).catch(() => {});
   }, [previousStatusMap]);
 
   return (
