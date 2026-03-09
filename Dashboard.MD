@@ -1,7 +1,7 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 3.0
+**Version**: 3.1
 **Date**: 2026-03-09
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
@@ -36,6 +36,12 @@
 | 3.0 | 2026-03-09 | **API esterna pharmar-api**: container Docker `pharmar-api` (porta 3002) con autenticazione `x-api-key`; espone `GET/POST/PATCH/DELETE /api/v1/preparations`, `GET /api/v1/cappe`, `GET /api/v1/drugs`, `GET /api/v1/stats`, `GET/POST/PATCH/DELETE /api/v1/keys`, `POST /api/v1/sync`, `* /api/v1/config/*` (proxy a sync service) |
 | 3.0 | 2026-03-09 | **Container pharmar-sync**: sync service HL7 containerizzato (Docker, rete `databasehl7_default`) raggiungibile da pharmar-api per nome host `pharmar-sync:3001`; Dockerfile aggiornato con build multi-stage |
 | 3.0 | 2026-03-09 | **Migrazione frontend**: tutte le chiamate API migrate da `/sync-api` a `/ext-api`; proxy Vite `/ext-api` inietta `x-api-key` server-side (chiave mai esposta nel bundle browser); catalogo farmaci popolato con 23 farmaci (codici ATC, categorie) |
+| 3.1 | 2026-03-09 | **Fix Traefik routing**: container `pharmar-api` connesso alla rete `n8n_default` (rete Traefik) e ricreato con Docker labels (`traefik.enable`, `traefik.docker.network`, `tls.certresolver`); l'API pubblica `https://api.srv1308057.hstgr.cloud/api/v1` è ora raggiungibile da GitHub Pages |
+| 3.1 | 2026-03-09 | **Fix build GitHub Pages**: rimosso blocco `env: VITE_EXT_API_KEY` dal workflow GitHub Actions che, se il secret non era impostato, sovrascriveva con stringa vuota il valore corretto in `.env.production`; il build ora legge direttamente `.env.production` |
+| 3.1 | 2026-03-09 | **Dashboard: tutti gli stati visibili**: rimosso il filtro che escludeva `validata` e `rifiutata` dal tab "Da Valutare"; ora tutte le preparazioni sono visibili nel tab principale indipendentemente dallo stato; StatCards aggiornate per includere tutti gli stati nel contatore Totale |
+| 3.1 | 2026-03-09 | **Validazione/rifiuto persistente**: `validatePreparation`, `rejectPreparation` e `undoPreparation` ora chiamano `PATCH /preparations/:id` per salvare il cambio di stato nel DB; aggiunta colonna `rejection_reason VARCHAR(100)` alla tabella `preparations`; l'API accetta e restituisce `rejectionReason` in PATCH e GET |
+| 3.1 | 2026-03-09 | **Fix sessione auth**: `AuthContext` inizializza `isAuthenticated`, `username` e `role` da `sessionStorage` tramite lazy initializer; la sessione viene ripristinata al refresh della pagina senza richiedere nuovo login |
+| 3.1 | 2026-03-09 | **Fix rejectionMap**: al caricamento delle preparazioni dall'API, `rejectionMap` viene ripopolato dal campo `rejectionReason` restituito dal server; i motivi di rifiuto non vengono più persi al refresh |
 
 ---
 
