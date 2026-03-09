@@ -1,8 +1,8 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 2.9
-**Date**: 2026-03-07
+**Version**: 3.0
+**Date**: 2026-03-09
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
 ### Changelog
@@ -33,6 +33,9 @@
 | 2.9 | 2026-03-07 | **Dettaglio preparazione**: sezione Quantitativi mostra "Dosaggio farmaco" = `labelData.dosage` e "Volume finale" = `labelData.volume`; header subtitle allineato con tabella |
 | 2.9 | 2026-03-07 | **Servizio sync HL7** (`Database/sync`): aggiunto motore di assegnazione automatica cappe (basato su `assignment_config` + `cappa_drug_rules`); normalizzazione unità HL7 (SODCL→mEq, KCLT→mEq, MGSO4→g, UI/IU→UI); endpoint REST `/config/*` per CRUD cappe, farmaci, categorie, strategia, lookup esterno farmaci |
 | 2.9 | 2026-03-07 | **Schema DB**: tabella `stations` rimossa; sostituita da `cappe_config` (con `tipologia`, `description`, `active`); aggiunte `cappa_drug_rules`, `assignment_config`, `drug_categories`, `drug_api_config`, `drugs_catalog` |
+| 3.0 | 2026-03-09 | **API esterna pharmar-api**: container Docker `pharmar-api` (porta 3002) con autenticazione `x-api-key`; espone `GET/POST/PATCH/DELETE /api/v1/preparations`, `GET /api/v1/cappe`, `GET /api/v1/drugs`, `GET /api/v1/stats`, `GET/POST/PATCH/DELETE /api/v1/keys`, `POST /api/v1/sync`, `* /api/v1/config/*` (proxy a sync service) |
+| 3.0 | 2026-03-09 | **Container pharmar-sync**: sync service HL7 containerizzato (Docker, rete `databasehl7_default`) raggiungibile da pharmar-api per nome host `pharmar-sync:3001`; Dockerfile aggiornato con build multi-stage |
+| 3.0 | 2026-03-09 | **Migrazione frontend**: tutte le chiamate API migrate da `/sync-api` a `/ext-api`; proxy Vite `/ext-api` inietta `x-api-key` server-side (chiave mai esposta nel bundle browser); catalogo farmaci popolato con 23 farmaci (codici ATC, categorie) |
 
 ---
 
@@ -207,10 +210,26 @@ project-root/                      # med-tracker-dash-v2 (frontend React)
 ├── vite.config.ts
 └── vitest.config.ts
 
-Database/                          # Backend & DB (separato)
+Database/                          # Backend & DB (separato dal frontend)
 ├── schema.sql                     # Schema MySQL pharmar_dashboard
 ├── seed.sql                       # Dati iniziali
-└── sync/                          # Servizio Node.js HL7 sync (porta 3001)
+├── api/                           # pharmar-api — API esterna REST (Docker :3002)
+│   ├── Dockerfile                 # Multi-stage build Node 20 alpine
+│   ├── src/
+│   │   ├── index.ts               # Express app + registrazione route
+│   │   ├── middleware/auth.ts     # Autenticazione x-api-key (master + DB)
+│   │   ├── routes/
+│   │   │   ├── preparations.ts    # GET/POST/PATCH/DELETE /api/v1/preparations
+│   │   │   ├── cappe.ts           # GET /api/v1/cappe (read-only)
+│   │   │   ├── drugs.ts           # GET /api/v1/drugs + /categories
+│   │   │   ├── executors.ts       # GET /api/v1/executors
+│   │   │   ├── stats.ts           # GET /api/v1/stats
+│   │   │   ├── keys.ts            # CRUD /api/v1/keys
+│   │   │   └── config.ts          # Proxy * /api/v1/config/* → pharmar-sync
+│   │   └── db.ts                  # Pool MySQL2
+│   └── package.json
+└── sync/                          # pharmar-sync — Sync service HL7 (Docker interno)
+    ├── Dockerfile                 # Multi-stage build Node 20 alpine
     ├── src/
     │   ├── index.ts               # HTTP server + endpoint /config/*
     │   ├── sync.ts                # Ciclo sync HL7 + autoAssignCappa()
@@ -1065,7 +1084,7 @@ interface Cappa {
 }
 ```
 
-**Endpoint API** (via `/sync-api` proxy → porta 3001):
+**Endpoint API** (via `/ext-api` proxy → pharmar-api porta 3002 → `/api/v1/config/*`):
 | Metodo | URL | Azione |
 |---|---|---|
 | GET | `/config/cappe` | Elenco cappe con regole |
@@ -1804,15 +1823,32 @@ import react from "@vitejs/plugin-react-swc"
 import path from "path"
 import { componentTagger } from "lovable-tagger"
 
+const EXT_API_KEY = "..."; // API_MASTER_KEY (iniettata server-side, non nel bundle)
+
 export default defineConfig(({ mode }) => ({
+  base: mode === "production" ? "/med-tracker-dash/" : "/",
   server: {
     host: "::",
     port: 8080,
     hmr: { overlay: false },
+    proxy: {
+      // API esterna — x-api-key iniettata dal proxy (mai esposta al browser)
+      "/ext-api": {
+        target: "http://127.0.0.1:3002",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ext-api/, "/api/v1"),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq) => {
+            proxyReq.setHeader("x-api-key", EXT_API_KEY);
+          });
+        },
+      },
+    },
   },
   plugins: [
     react(),
     mode === "development" && componentTagger(),
+    mode === "development" && syncDaemonPlugin(), // avvia pharmar-sync in dev
   ].filter(Boolean),
   resolve: {
     alias: {
@@ -1823,6 +1859,8 @@ export default defineConfig(({ mode }) => ({
 ```
 
 **Dev Server**: porta 8080, host `::` (tutti gli indirizzi IPv4/IPv6)
+
+**Proxy `/ext-api`**: in sviluppo il Vite dev server proxia `/ext-api/*` verso `http://127.0.0.1:3002/api/v1/*` aggiungendo automaticamente l'header `x-api-key` con la master key. La chiave non appare mai nel bundle JavaScript del browser.
 
 ### 12.2 TypeScript Config
 
@@ -1963,33 +2001,91 @@ Hook: `use-mobile.tsx` rileva breakpoint 768px con `window.matchMedia`.
 
 ---
 
-## 14. Servizio Sync HL7
+## 14. Architettura Backend
+
+### 14.0 Schema di connessione (v3.0)
+
+```
+Browser
+  └─ /ext-api/*  (Vite proxy, inietta x-api-key server-side)
+       └─► pharmar-api  :3002  (Docker, rete databasehl7_default)
+                ├─► MySQL  hl7_mysql:3306  (letture/scritture dirette)
+                └─► pharmar-sync  :3001  (per /api/v1/config/* e /api/v1/sync)
+                         └─► MySQL  hl7_mysql:3306
+                         └─► ServizioHL7  :3000  (host, prescriptions)
+```
+
+Il frontend non ha più dipendenze dirette dal sync service locale. Tutto il traffico
+passa attraverso pharmar-api con autenticazione `x-api-key`.
+
+### 14.1 pharmar-api (API Esterna)
+
+**Directory**: `Database/api/`
+**Container**: `pharmar-api` (immagine `pharmar-api:latest`)
+**Porta host**: 3002 → container 3002
+**Rete Docker**: `databasehl7_default`
+**URL pubblico**: `https://api.srv1308057.hstgr.cloud`
+**Proxy Vite**: `/ext-api` → `http://127.0.0.1:3002/api/v1` (con `x-api-key` iniettata)
+
+#### Endpoint
+
+| Metodo | URL | Auth | Descrizione |
+|---|---|---|---|
+| GET | `/health` | No | Health check |
+| GET | `/api/v1/preparations` | Sì | Elenco preparazioni (filtri: status, priority, cappa_id, date_from, date_to, limit, offset) |
+| GET | `/api/v1/preparations/:id` | Sì | Dettaglio preparazione |
+| POST | `/api/v1/preparations` | Sì | Crea preparazione |
+| PATCH | `/api/v1/preparations/:id` | Sì | Aggiorna status/campi preparazione |
+| DELETE | `/api/v1/preparations/:id` | Sì | Elimina preparazione |
+| GET | `/api/v1/cappe` | Sì | Elenco cappe con regole farmaci |
+| GET | `/api/v1/cappe/:id` | Sì | Dettaglio cappa |
+| GET | `/api/v1/drugs` | Sì | Catalogo farmaci (filtri: q, category) |
+| GET | `/api/v1/drugs/categories` | Sì | Elenco categorie farmaci |
+| GET | `/api/v1/executors` | Sì | Elenco esecutori |
+| GET | `/api/v1/stats` | Sì | Statistiche (byStatus, byPriority, cappeLoad, last7days) |
+| GET/POST/PATCH/DELETE | `/api/v1/keys` | Sì (admin) | Gestione API keys |
+| POST | `/api/v1/sync` | Sì | Trigger sync HL7 (delega a pharmar-sync) |
+| `*` | `/api/v1/config/*` | Sì | Proxy trasparente a pharmar-sync `/config/*` |
+
+#### Autenticazione
+
+Header `X-Api-Key` richiesto su tutti gli endpoint `/api/v1/*`.
+
+| Chiave | Ruolo | Permessi |
+|---|---|---|
+| `API_MASTER_KEY` | `admin` | Lettura + scrittura completa |
+| Chiavi DB (`api_keys`) | `readonly` / `admin` | Configurabili via `/api/v1/keys` |
+
+Il Vite proxy inietta il `API_MASTER_KEY` server-side: la chiave non appare mai nel bundle JavaScript del browser.
+
+### 14.2 pharmar-sync (Sync Service HL7)
 
 **Directory**: `Database/sync/`
-**Porta**: 3001 (HTTP)
-**Proxy Vite**: `/sync-api` → `http://localhost:3001`
+**Container**: `pharmar-sync` (immagine `pharmar-sync:latest`)
+**Porta interna**: 3001 (non esposta all'host)
+**Rete Docker**: `databasehl7_default`
+**Raggiungibile da pharmar-api** come `http://pharmar-sync:3001`
 
-Il servizio Node.js TypeScript è responsabile di:
-1. Importare periodicamente le prescrizioni dal ServizioHL7 (porta 3000)
-2. Mapparle in preparazioni nel DB MySQL (`pharmar_dashboard`)
-3. Esporre API REST per il frontend (configurazione, dati preparazioni, trigger sync)
+Il servizio è responsabile di:
+1. Importare periodicamente le prescrizioni dal ServizioHL7 (porta 3000 sul host)
+2. Mapparle in preparazioni nel DB MySQL con normalizzazione unità e auto-assegnazione cappe
+3. Esporre API REST di configurazione utilizzate da pharmar-api come proxy
 
-### 14.1 Endpoint HTTP
+#### Endpoint (interni, accessibili tramite pharmar-api `/api/v1/config/*`)
 
 | Metodo | URL | Descrizione |
 |---|---|---|
-| GET | `/preparations` | Elenco preparazioni con JOIN executor, cappa, label |
 | POST | `/sync` | Trigger manuale sincronizzazione HL7 |
 | GET/PUT | `/config/assignment` | Strategia assegnazione cappe |
-| GET/POST/PUT/DELETE | `/config/cappe` e `/config/cappe/:id` | CRUD cappe |
-| POST | `/config/cappe/:id/drug-rules` | Aggiunge regola farmaco a cappa |
+| GET/POST/PUT/DELETE | `/config/cappe` | CRUD cappe |
+| POST | `/config/cappe/:id/drug-rules` | Aggiunge regola farmaco |
 | DELETE | `/config/drug-rules/:id` | Elimina regola farmaco |
 | GET/PUT | `/config/drug-api` | Config provider API farmaci |
-| GET | `/config/drug-lookup?name=` | Proxy lookup esterno farmaci |
-| GET/POST/DELETE | `/config/categories` e `/config/categories/:id` | CRUD categorie |
-| GET/POST/PUT/DELETE | `/config/drugs` e `/config/drugs/:id` | CRUD catalogo farmaci |
+| GET | `/config/drug-lookup?name=` | Proxy lookup esterno (ChEMBL/RxNorm/custom) |
+| GET/POST/DELETE | `/config/categories` | CRUD categorie |
+| GET/POST/PUT/DELETE | `/config/drugs` | CRUD catalogo farmaci |
 
-### 14.2 Assegnazione Automatica Cappe
+### 14.3 Assegnazione Automatica Cappe
 
 Il motore `autoAssignCappa(drugName)` in `sync.ts` viene invocato ad ogni nuova prescrizione (quando l'HL7 non specifica esplicitamente una cappa).
 
@@ -2007,7 +2103,7 @@ Il motore `autoAssignCappa(drugName)` in `sync.ts` viene invocato ad ogni nuova 
 | `lifo` | Cappa con `last_assigned_at` più recente |
 | `round_robin` | Cappa successiva per ID rispetto all'ultima usata |
 
-### 14.3 Normalizzazione Unità HL7
+### 14.4 Normalizzazione Unità HL7
 
 Il file `mapper.ts` contiene la mappa `UNIT_LABELS` che converte codici HL7 in unità cliniche leggibili:
 
@@ -2021,7 +2117,7 @@ Il file `mapper.ts` contiene la mappa `UNIT_LABELS` che converte codici HL7 in u
 
 La funzione `normalizeDosage(value, unit)` produce output come `"2 g"`, `"175 mEq"`, `"50 UI"`.
 
-### 14.4 Schema DB (tabelle principali v2.9)
+### 14.5 Schema DB (tabelle principali v3.0)
 
 | Tabella | Scopo |
 |---|---|
