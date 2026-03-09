@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { generateLabelPdf } from "@/lib/generateLabelPdf";
-import { type Status, type Priority } from "@/data/preparations";
+import { type Status, type Priority, type ValidationStatus } from "@/data/preparations";
 import { usePreparations, type RejectionReason } from "@/context/PreparationsContext";
 import Navbar from "@/components/dashboard/Navbar";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,9 @@ const statusConfig: Record<Status, { icon: React.ReactNode; label: string; class
   esecuzione: { icon: <Loader className="h-5 w-5" />, label: "In esecuzione", className: "text-status-progress", bgClassName: "bg-status-progress-bg" },
   errore: { icon: <AlertTriangle className="h-5 w-5" />, label: "Errore", className: "text-status-error", bgClassName: "bg-status-error-bg" },
   attesa: { icon: <Clock className="h-5 w-5" />, label: "Da eseguire", className: "text-status-waiting", bgClassName: "bg-status-waiting-bg" },
+};
+
+const validationConfig: Record<NonNullable<ValidationStatus>, { icon: React.ReactNode; label: string; className: string; bgClassName: string }> = {
   validata: { icon: <ShieldCheck className="h-5 w-5" />, label: "Validata", className: "text-status-complete", bgClassName: "bg-status-complete-bg" },
   rifiutata: { icon: <ShieldX className="h-5 w-5" />, label: "Rifiutata", className: "text-status-error", bgClassName: "bg-status-error-bg" },
 };
@@ -102,7 +105,7 @@ const PreparationDetail = () => {
               >
                 <Printer className="h-4 w-4" /> Ristampa Etichetta
               </Button>
-              {prep.status !== "validata" && prep.status !== "rifiutata" ? (
+              {prep.validationStatus === null ? (
                 prep.status !== "attesa" && prep.status !== "esecuzione" ? (
                   <>
                     <Button
@@ -122,8 +125,8 @@ const PreparationDetail = () => {
                 )
               ) : (
                 <>
-                  <Badge className={`text-sm ${prep.status === "validata" ? "bg-status-complete-bg text-status-complete" : "bg-status-error-bg text-status-error"}`}>
-                    {prep.status === "validata" ? "Validata" : `Rifiutata: ${getRejectionReason(prep.id) ?? ""}`}
+                  <Badge className={`text-sm ${prep.validationStatus === "validata" ? "bg-status-complete-bg text-status-complete" : "bg-status-error-bg text-status-error"}`}>
+                    {prep.validationStatus === "validata" ? "Validata" : `Rifiutata: ${getRejectionReason(prep.id) ?? ""}`}
                   </Badge>
                   <Button
                     variant="outline"

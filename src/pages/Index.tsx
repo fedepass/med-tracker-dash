@@ -12,11 +12,9 @@ import Navbar from "@/components/dashboard/Navbar";
 import StatCards from "@/components/dashboard/StatCards";
 import PreparationsTable from "@/components/dashboard/PreparationsTable";
 import { usePreparations } from "@/context/PreparationsContext";
-import type { Status } from "@/data/preparations";
+import type { Status, ValidationStatus } from "@/data/preparations";
 
-const activeStatuses: Status[] = ["completata", "esecuzione", "errore", "attesa"];
-const archivedStatuses: Status[] = ["validata", "rifiutata"];
-const validStatuses: Status[] = [...activeStatuses, ...archivedStatuses];
+const validStatuses: Status[] = ["completata", "esecuzione", "errore", "attesa"];
 const todayStr = () => format(new Date(), "yyyy-MM-dd");
 
 const Index = () => {
@@ -28,6 +26,10 @@ const Index = () => {
   const rawStatus = searchParams.get("status");
   const statusFilter: Status | null =
     rawStatus && validStatuses.includes(rawStatus as Status) ? (rawStatus as Status) : null;
+
+  const rawValidation = searchParams.get("validation");
+  const validationFilter: ValidationStatus =
+    rawValidation === "validata" || rawValidation === "rifiutata" ? rawValidation : null;
 
   // Date range — default: today → today
   const rawFrom = searchParams.get("dateFrom");
@@ -69,6 +71,7 @@ const Index = () => {
         const next = new URLSearchParams(prev);
         next.set("tab", t);
         next.delete("status");
+        next.delete("validation");
         return next;
       },
       { replace: true }
@@ -87,17 +90,29 @@ const Index = () => {
     );
   };
 
+  const setValidationFilter = (v: ValidationStatus) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (v) next.set("validation", v);
+        else next.delete("validation");
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
   const isToday =
     dateFromStr === todayStr() && dateToStr === todayStr();
 
   const activeRangePreps = preparations.filter(
-    (p) => p.date >= dateFromStr && p.date <= dateToStr && p.status !== "validata" && p.status !== "rifiutata"
+    (p) => p.date >= dateFromStr && p.date <= dateToStr && p.validationStatus === null
   );
   const archivedRangePreps = preparations.filter(
-    (p) => p.date >= dateFromStr && p.date <= dateToStr && archivedStatuses.includes(p.status)
+    (p) => p.date >= dateFromStr && p.date <= dateToStr && p.validationStatus !== null
   );
-  const validatedCount = archivedRangePreps.filter((p) => p.status === "validata").length;
-  const rejectedCount = archivedRangePreps.filter((p) => p.status === "rifiutata").length;
+  const validatedCount = archivedRangePreps.filter((p) => p.validationStatus === "validata").length;
+  const rejectedCount  = archivedRangePreps.filter((p) => p.validationStatus === "rifiutata").length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -227,10 +242,10 @@ const Index = () => {
           <TabsContent value="archivio" className="mt-0 space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row">
               <button
-                onClick={() => setStatusFilter(statusFilter === "validata" ? null : "validata")}
+                onClick={() => setValidationFilter(validationFilter === "validata" ? null : "validata")}
                 className={cn(
                   "flex flex-1 items-center gap-4 rounded-xl border-2 bg-card p-5 shadow-sm transition-all hover:shadow-md text-left",
-                  statusFilter === "validata"
+                  validationFilter === "validata"
                     ? "border-status-complete text-status-complete"
                     : "border-border"
                 )}
@@ -244,10 +259,10 @@ const Index = () => {
                 </div>
               </button>
               <button
-                onClick={() => setStatusFilter(statusFilter === "rifiutata" ? null : "rifiutata")}
+                onClick={() => setValidationFilter(validationFilter === "rifiutata" ? null : "rifiutata")}
                 className={cn(
                   "flex flex-1 items-center gap-4 rounded-xl border-2 bg-card p-5 shadow-sm transition-all hover:shadow-md text-left",
-                  statusFilter === "rifiutata"
+                  validationFilter === "rifiutata"
                     ? "border-status-error text-status-error"
                     : "border-border"
                 )}
@@ -264,6 +279,7 @@ const Index = () => {
             <PreparationsTable
               mode="archived"
               statusFilter={statusFilter}
+              validationFilter={validationFilter}
               dateFrom={dateFromStr}
               dateTo={dateToStr}
             />

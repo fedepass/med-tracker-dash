@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { type Status, type Priority } from "@/data/preparations";
+import { type Status, type Priority, type ValidationStatus } from "@/data/preparations";
 import { usePreparations, type RejectionReason } from "@/context/PreparationsContext";
 import RejectDialog from "./RejectDialog";
 
@@ -17,6 +17,9 @@ const statusConfig: Record<Status, { icon: React.ReactNode; label: string; class
   esecuzione: { icon: <Loader className="h-4 w-4" />, label: "In esecuzione", className: "text-status-progress" },
   errore: { icon: <AlertTriangle className="h-4 w-4" />, label: "Errore", className: "text-status-error" },
   attesa: { icon: <Clock className="h-4 w-4" />, label: "Da eseguire", className: "text-status-waiting" },
+};
+
+const validationConfig: Record<NonNullable<ValidationStatus>, { icon: React.ReactNode; label: string; className: string }> = {
   validata: { icon: <ShieldCheck className="h-4 w-4" />, label: "Validata", className: "text-status-complete" },
   rifiutata: { icon: <ShieldX className="h-4 w-4" />, label: "Rifiutata", className: "text-status-error" },
 };
@@ -31,16 +34,17 @@ type SortKey = "id" | "status" | "priority" | "drug" | "dispensed" | "errorRate"
 type SortDir = "asc" | "desc";
 
 const priorityOrder: Record<Priority, number> = { alta: 0, media: 1, bassa: 2 };
-const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3, validata: 4, rifiutata: 5 };
+const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3 };
 
 interface PreparationsTableProps {
   mode: "active" | "archived";
   statusFilter?: Status | null;
+  validationFilter?: ValidationStatus;
   dateFrom?: string;
   dateTo?: string;
 }
 
-const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: PreparationsTableProps) => {
+const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dateTo }: PreparationsTableProps) => {
   const navigate = useNavigate();
   const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation, barcodeSelectedIds, tableSelected: selected, setTableSelected: setSelected } = usePreparations();
   const [search, setSearch] = useState("");
@@ -73,9 +77,10 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
     if (dateTo) data = data.filter((p) => p.date <= dateTo);
 
     if (mode === "archived") {
-      data = data.filter((p) => p.status === "validata" || p.status === "rifiutata");
+      data = data.filter((p) => p.validationStatus !== null);
+      if (validationFilter) data = data.filter((p) => p.validationStatus === validationFilter);
     } else {
-      data = data.filter((p) => p.status !== "validata" && p.status !== "rifiutata");
+      data = data.filter((p) => p.validationStatus === null);
     }
 
     if (statusFilter) {
@@ -90,7 +95,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(q))
     );
-  }, [search, statusFilter, preparations, mode, dateFrom, dateTo]);
+  }, [search, statusFilter, validationFilter, preparations, mode, dateFrom, dateTo]);
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
@@ -129,7 +134,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
 
   const toggleSelect = (id: string) => {
     const prep = preparations.find((p) => p.id === id);
-    if (prep?.status === "validata" || prep?.status === "rifiutata") return;
+    if (prep?.validationStatus !== null && prep?.validationStatus !== undefined) return;
     setSelected((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -148,7 +153,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
 
   const progressColor = (status: Status, errorRate: number) => {
     if (errorRate > 2) return "bg-status-error";
-    if (status === "completata" || status === "validata") return "bg-status-complete";
+    if (status === "completata") return "bg-status-complete";
     if (status === "esecuzione") return "bg-status-waiting";
     return "bg-muted-foreground";
   };
@@ -205,7 +210,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
           {mode === "active" && selected.size > 0 && (() => {
             const validatable = [...selected].filter((id) => {
               const p = preparations.find((pr) => pr.id === id);
-              return p && p.status !== "attesa" && p.status !== "esecuzione" && p.status !== "validata" && p.status !== "rifiutata";
+              return p && p.status !== "attesa" && p.status !== "esecuzione" && p.validationStatus === null;
             });
             return validatable.length > 0 ? (
               <button
@@ -262,6 +267,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
               <th className={thClass} onClick={() => toggleSort("requestedAt")}>
                 <span className="inline-flex items-center gap-1">Tempistiche <SortIcon col="requestedAt" /></span>
               </th>
+              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider">Validazione</th>
               {mode === "archived" && (
                 <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider">Motivo</th>
               )}
@@ -350,6 +356,16 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
                       )}
                     </div>
                   </td>
+                  <td className="px-4 py-4">
+                    {p.validationStatus ? (
+                      <div className={`flex items-center gap-1 text-xs ${validationConfig[p.validationStatus].className}`}>
+                        {validationConfig[p.validationStatus].icon}
+                        {validationConfig[p.validationStatus].label}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
                   {mode === "archived" && (
                     <td className="px-4 py-4">
                       {rejectionReason ? (
@@ -364,7 +380,7 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
                   <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                     {mode === "active" ? (
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {p.status !== "attesa" && p.status !== "esecuzione" ? (
+                        {p.status !== "attesa" && p.status !== "esecuzione" && p.validationStatus === null ? (
                           <>
                             <button
                               onClick={() => validatePreparation(p.id)}

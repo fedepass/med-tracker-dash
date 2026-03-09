@@ -21,8 +21,6 @@ const STATUS_COLORS: Record<Status, string> = {
   esecuzione: "hsl(36, 90%, 52%)",
   completata: "hsl(152, 60%, 44%)",
   errore: "hsl(0, 72%, 56%)",
-  validata: "hsl(152, 80%, 36%)",
-  rifiutata: "hsl(0, 50%, 44%)",
 };
 
 const STATUS_LABELS: Record<Status, string> = {
@@ -30,8 +28,6 @@ const STATUS_LABELS: Record<Status, string> = {
   esecuzione: "In Esecuzione",
   completata: "Completata",
   errore: "Errore",
-  validata: "Validata",
-  rifiutata: "Rifiutata",
 };
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -83,7 +79,7 @@ const Analytics = () => {
       const name = p.station || "Non assegnata";
       if (!map[name]) map[name] = { total: 0, completed: 0, errors: 0 };
       map[name].total++;
-      if (p.status === "completata" || p.status === "validata") map[name].completed++;
+      if (p.status === "completata") map[name].completed++;
       if (p.status === "errore") map[name].errors++;
     });
     return Object.entries(map).map(([name, d]) => ({ name, ...d }));
@@ -96,7 +92,7 @@ const Analytics = () => {
 
   const completionRate = useMemo(() => {
     if (!filtered.length) return 0;
-    const done = filtered.filter((p) => p.status === "completata" || p.status === "validata").length;
+    const done = filtered.filter((p) => p.status === "completata").length;
     return (done / filtered.length) * 100;
   }, [filtered]);
 
@@ -168,7 +164,7 @@ const Analytics = () => {
           <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="Totale" value={filtered.length} color="text-primary" />
           <KpiCard icon={<Clock className="h-5 w-5" />} label="In Attesa" value={filtered.filter((p) => p.status === "attesa").length} color="text-status-waiting" />
           <KpiCard icon={<Loader2 className="h-5 w-5" />} label="In Esecuzione" value={filtered.filter((p) => p.status === "esecuzione").length} color="text-status-progress" />
-          <KpiCard icon={<CheckCircle2 className="h-5 w-5" />} label="Completate" value={filtered.filter((p) => p.status === "completata" || p.status === "validata").length} color="text-status-complete" />
+          <KpiCard icon={<CheckCircle2 className="h-5 w-5" />} label="Completate" value={filtered.filter((p) => p.status === "completata").length} color="text-status-complete" />
           <KpiCard icon={<XCircle className="h-5 w-5" />} label="Errori" value={filtered.filter((p) => p.status === "errore").length} color="text-status-error" />
           <KpiCard icon={<AlertTriangle className="h-5 w-5" />} label="Err. Rate %" value={`${avgErrorRate.toFixed(1)}%`} color="text-destructive" />
         </div>

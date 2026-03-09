@@ -4,7 +4,8 @@ import photoSaccaIV from "@/assets/photo-sacca-iv.jpg";
 import photoSiringa from "@/assets/photo-siringa.jpg";
 import photoPreparazioneFinale from "@/assets/photo-preparazione-finale.jpg";
 
-export type Status = "completata" | "esecuzione" | "errore" | "attesa" | "validata" | "rifiutata";
+export type Status = "completata" | "esecuzione" | "errore" | "attesa";
+export type ValidationStatus = "validata" | "rifiutata" | null;
 export type Priority = "alta" | "media" | "bassa";
 
 export type PrepType = "infusione_iv" | "siringa_ricostituita";
@@ -40,6 +41,7 @@ export interface LabelData {
 export interface Preparation {
   id: string;
   status: Status;
+  validationStatus: ValidationStatus;
   priority: Priority;
   prepType: PrepType;
   drug: string;
@@ -96,6 +98,7 @@ export const preparations: Preparation[] = [
   {
     id: "RX-2847",
     status: "completata",
+    validationStatus: null,
     priority: "alta",
     prepType: "infusione_iv",
     drug: "Ceftriaxone 2g",
@@ -132,6 +135,7 @@ export const preparations: Preparation[] = [
   {
     id: "RX-2846",
     status: "esecuzione",
+    validationStatus: null,
     priority: "media",
     prepType: "siringa_ricostituita",
     drug: "Vancomicina 1g",
@@ -166,6 +170,7 @@ export const preparations: Preparation[] = [
   {
     id: "RX-2845",
     status: "errore",
+    validationStatus: null,
     priority: "alta",
     prepType: "infusione_iv",
     drug: "Meropenem 1g",
@@ -203,6 +208,7 @@ export const preparations: Preparation[] = [
   {
     id: "RX-2844",
     status: "attesa",
+    validationStatus: null,
     priority: "bassa",
     prepType: "siringa_ricostituita",
     drug: "Pantoprazolo 40mg",
@@ -237,6 +243,7 @@ export const preparations: Preparation[] = [
   {
     id: "RX-2843",
     status: "completata",
+    validationStatus: null,
     priority: "media",
     prepType: "infusione_iv",
     drug: "Piperacillina/Tazobactam 4.5g",
@@ -271,6 +278,7 @@ export const preparations: Preparation[] = [
   {
     id: "RX-2842",
     status: "completata",
+    validationStatus: null,
     priority: "alta",
     prepType: "siringa_ricostituita",
     drug: "Ampicillina 1g",
@@ -305,6 +313,7 @@ export const preparations: Preparation[] = [
   {
     id: "RX-2841",
     status: "esecuzione",
+    validationStatus: null,
     priority: "alta",
     prepType: "infusione_iv",
     drug: "Amoxicillina/Ac. Clavulanico 2.2g",
@@ -339,6 +348,7 @@ export const preparations: Preparation[] = [
   {
     id: "RX-2840",
     status: "attesa",
+    validationStatus: null,
     priority: "media",
     prepType: "infusione_iv",
     drug: "Ciprofloxacina 400mg",
@@ -373,6 +383,7 @@ export const preparations: Preparation[] = [
   {
     id: "RX-2839",
     status: "completata",
+    validationStatus: null,
     priority: "bassa",
     prepType: "siringa_ricostituita",
     drug: "Desametasone 8mg",
@@ -407,6 +418,7 @@ export const preparations: Preparation[] = [
   {
     id: "RX-2838",
     status: "errore",
+    validationStatus: null,
     priority: "media",
     prepType: "infusione_iv",
     drug: "Teicoplanina 400mg",
@@ -444,7 +456,8 @@ export const preparations: Preparation[] = [
   // ── 27 febbraio 2026 ─────────────────────────────────────────────────────
   {
     id: "RX-2837",
-    status: "validata",
+    status: "completata",
+    validationStatus: "validata",
     priority: "alta",
     prepType: "infusione_iv",
     drug: "Meropenem 2g",
@@ -478,7 +491,8 @@ export const preparations: Preparation[] = [
   },
   {
     id: "RX-2836",
-    status: "rifiutata",
+    status: "completata",
+    validationStatus: "rifiutata",
     priority: "alta",
     prepType: "siringa_ricostituita",
     drug: "Morfina Solfato 10mg",
@@ -514,7 +528,8 @@ export const preparations: Preparation[] = [
   },
   {
     id: "RX-2835",
-    status: "validata",
+    status: "completata",
+    validationStatus: "validata",
     priority: "media",
     prepType: "infusione_iv",
     drug: "Fluconazolo 200mg",
@@ -548,7 +563,8 @@ export const preparations: Preparation[] = [
   },
   {
     id: "RX-2834",
-    status: "validata",
+    status: "completata",
+    validationStatus: "validata",
     priority: "bassa",
     prepType: "siringa_ricostituita",
     drug: "Furosemide 40mg",
@@ -584,7 +600,8 @@ export const preparations: Preparation[] = [
   // ── 26 febbraio 2026 ─────────────────────────────────────────────────────
   {
     id: "RX-2833",
-    status: "validata",
+    status: "completata",
+    validationStatus: "validata",
     priority: "alta",
     prepType: "infusione_iv",
     drug: "Vancomicina 1g",
@@ -618,7 +635,8 @@ export const preparations: Preparation[] = [
   },
   {
     id: "RX-2832",
-    status: "rifiutata",
+    status: "completata",
+    validationStatus: "rifiutata",
     priority: "media",
     prepType: "infusione_iv",
     drug: "Ciprofloxacina 400mg",
@@ -652,7 +670,8 @@ export const preparations: Preparation[] = [
   },
   {
     id: "RX-2831",
-    status: "validata",
+    status: "completata",
+    validationStatus: "validata",
     priority: "alta",
     prepType: "siringa_ricostituita",
     drug: "Insulina Regolare 50UI",
@@ -688,7 +707,8 @@ export const preparations: Preparation[] = [
   // ── 25 febbraio 2026 ─────────────────────────────────────────────────────
   {
     id: "RX-2830",
-    status: "validata",
+    status: "completata",
+    validationStatus: "validata",
     priority: "alta",
     prepType: "infusione_iv",
     drug: "Ceftriaxone 2g",
@@ -722,7 +742,8 @@ export const preparations: Preparation[] = [
   },
   {
     id: "RX-2829",
-    status: "rifiutata",
+    status: "completata",
+    validationStatus: "rifiutata",
     priority: "media",
     prepType: "infusione_iv",
     drug: "Metronidazolo 500mg",
@@ -758,7 +779,8 @@ export const preparations: Preparation[] = [
   },
   {
     id: "RX-2828",
-    status: "validata",
+    status: "completata",
+    validationStatus: "validata",
     priority: "bassa",
     prepType: "siringa_ricostituita",
     drug: "Pantoprazolo 40mg",
