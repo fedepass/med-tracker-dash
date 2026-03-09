@@ -14,6 +14,16 @@
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Pharma Dashboard">
     <meta name="twitter:description" content="Pharma Dashboard - Gestione farmaci e preparazioni">
+    <script>
+      // Ripristina il path salvato da 404.html (GitHub Pages SPA redirect)
+      (function () {
+        var redirect = sessionStorage.getItem('spa-redirect');
+        if (redirect) {
+          sessionStorage.removeItem('spa-redirect');
+          history.replaceState(null, null, redirect);
+        }
+      })();
+    </script>
 </head>
 
   <body>

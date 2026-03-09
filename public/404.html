@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // GitHub Pages SPA redirect trick:
+      // salva il path in sessionStorage e reindirizza alla root
+      var path = location.pathname.replace('/med-tracker-dash', '') + location.search + location.hash;
+      sessionStorage.setItem('spa-redirect', path || '/');
+      location.replace('/med-tracker-dash/');
+    </script>
+  </head>
+  <body></body>
+</html>
