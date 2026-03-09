@@ -41,7 +41,7 @@ const StatCards = ({ activeStatus, onStatusClick, dateFrom, dateTo }: StatCardsP
   const { preparations } = usePreparations();
 
   const counts = useMemo(() => {
-    const forDate = preparations.filter((p) => p.date >= dateFrom && p.date <= dateTo && p.status !== "validata" && p.status !== "rifiutata");
+    const forDate = preparations.filter((p) => p.date >= dateFrom && p.date <= dateTo);
     return {
       totale: forDate.length,
       attesa: forDate.filter((p) => p.status === "attesa").length,

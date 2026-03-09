@@ -74,8 +74,6 @@ const PreparationsTable = ({ mode, statusFilter, dateFrom, dateTo }: Preparation
 
     if (mode === "archived") {
       data = data.filter((p) => p.status === "validata" || p.status === "rifiutata");
-    } else {
-      data = data.filter((p) => p.status !== "validata" && p.status !== "rifiutata");
     }
 
     if (statusFilter) {

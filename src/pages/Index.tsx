@@ -91,7 +91,7 @@ const Index = () => {
     dateFromStr === todayStr() && dateToStr === todayStr();
 
   const activeRangePreps = preparations.filter(
-    (p) => p.date >= dateFromStr && p.date <= dateToStr && activeStatuses.includes(p.status)
+    (p) => p.date >= dateFromStr && p.date <= dateToStr
   );
   const archivedRangePreps = preparations.filter(
     (p) => p.date >= dateFromStr && p.date <= dateToStr && archivedStatuses.includes(p.status)
