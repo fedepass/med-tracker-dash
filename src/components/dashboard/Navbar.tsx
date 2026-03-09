@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const HL7_BASE_URL = "http://127.0.0.1:3000";
-const SYNC_API_URL = "/sync-api";
+const EXT_API_URL = "/ext-api";
 
 const Navbar = () => {
   const location = useLocation();
@@ -60,7 +60,7 @@ const Navbar = () => {
   const handleImportPending = async () => {
     setSyncLoading(true);
     try {
-      const res = await fetch(`${SYNC_API_URL}/sync`, { method: "POST" });
+      const res = await fetch(`${EXT_API_URL}/sync`, { method: "POST" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const result: { fetched: number; imported: number; skipped: number; errors: number } = await res.json();
       if (result.imported > 0) {
