@@ -22,9 +22,9 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [username, setUsername] = useState<string | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem("auth") === "1");
+  const [username, setUsername] = useState<string | null>(() => sessionStorage.getItem("auth_user"));
+  const [role, setRole] = useState<UserRole | null>(() => sessionStorage.getItem("auth_role") as UserRole | null);
 
   const login = useCallback((user: string, pass: string) => {
     const entry = USERS[user];
