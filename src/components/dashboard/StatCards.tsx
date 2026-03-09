@@ -1,4 +1,4 @@
-import { Clock, Loader, CheckCircle2, AlertTriangle, List, ShieldCheck, ShieldX } from "lucide-react";
+import { Clock, Loader, CheckCircle2, AlertTriangle, List } from "lucide-react";
 import type { Status } from "@/data/preparations";
 import { usePreparations } from "@/context/PreparationsContext";
 import { useMemo } from "react";
@@ -48,8 +48,6 @@ const StatCards = ({ activeStatus, onStatusClick, dateFrom, dateTo }: StatCardsP
       esecuzione: forDate.filter((p) => p.status === "esecuzione").length,
       completata: forDate.filter((p) => p.status === "completata").length,
       errore: forDate.filter((p) => p.status === "errore").length,
-      validata: forDate.filter((p) => p.status === "validata").length,
-      rifiutata: forDate.filter((p) => p.status === "rifiutata").length,
     };
   }, [preparations, dateFrom, dateTo]);
 
@@ -59,8 +57,6 @@ const StatCards = ({ activeStatus, onStatusClick, dateFrom, dateTo }: StatCardsP
     { status: "esecuzione", icon: <Loader className="h-6 w-6" />, value: counts.esecuzione, label: "In Esecuzione", colorClass: "text-status-progress", bgClass: "bg-status-progress-bg" },
     { status: "completata", icon: <CheckCircle2 className="h-6 w-6" />, value: counts.completata, label: "Completate", colorClass: "text-status-complete", bgClass: "bg-status-complete-bg" },
     { status: "errore", icon: <AlertTriangle className="h-6 w-6" />, value: counts.errore, label: "Con Errori", colorClass: "text-status-error", bgClass: "bg-status-error-bg" },
-    { status: "validata", icon: <ShieldCheck className="h-6 w-6" />, value: counts.validata, label: "Validate", colorClass: "text-status-complete", bgClass: "bg-status-complete-bg" },
-    { status: "rifiutata", icon: <ShieldX className="h-6 w-6" />, value: counts.rifiutata, label: "Rifiutate", colorClass: "text-status-error", bgClass: "bg-status-error-bg" },
   ];
 
   return (
