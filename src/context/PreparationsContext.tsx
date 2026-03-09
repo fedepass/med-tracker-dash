@@ -71,6 +71,12 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
     try {
       const data = await fetchPreparationsFromAPI();
       setPreps(data);
+      // Ripristina i motivi di rifiuto dal DB
+      const map: Record<string, RejectionReason> = {};
+      data.forEach((p: any) => {
+        if (p.rejectionReason) map[p.id] = p.rejectionReason as RejectionReason;
+      });
+      setRejectionMap(map);
     } catch {
       // fallback silenzioso: l'interfaccia mantiene i dati correnti
     }
