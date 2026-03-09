@@ -24,9 +24,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
-const SYNC_API = "/sync-api";   // mutazioni config + drug-lookup (sync service locale)
-const EXT_API  = "/ext-api";    // letture dati (API esterna pharmar-api)
+import { extFetch } from "@/lib/apiClient";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -357,7 +355,7 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
     setLookupResults([]);
     setLookupError(null);
     try {
-      const res = await fetch(`${EXT_API}/config/drug-lookup?name=${encodeURIComponent(name.trim())}`);
+      const res = await extFetch(`/config/drug-lookup?name=${encodeURIComponent(name.trim())}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       setLookupResults(data);
@@ -529,7 +527,7 @@ export default function Config() {
 
   const fetchCappe = useCallback(async () => {
     try {
-      const res = await fetch(`${EXT_API}/cappe`);
+      const res = await extFetch(`/cappe`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: Cappa[] = await res.json();
       setCappe(data);
@@ -542,7 +540,7 @@ export default function Config() {
 
   const fetchStrategy = useCallback(async () => {
     try {
-      const res = await fetch(`${EXT_API}/config/assignment`);
+      const res = await extFetch(`/config/assignment`);
       if (!res.ok) return;
       const data: { strategy: AssignmentStrategy } = await res.json();
       setStrategy(data.strategy);
@@ -553,7 +551,7 @@ export default function Config() {
 
   const fetchDrugs = useCallback(async () => {
     try {
-      const res = await fetch(`${EXT_API}/drugs`);
+      const res = await extFetch(`/drugs`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setDrugs(await res.json());
     } catch {
@@ -565,14 +563,14 @@ export default function Config() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch(`${EXT_API}/drugs/categories`);
+      const res = await extFetch(`/drugs/categories`);
       if (res.ok) setCategories(await res.json());
     } catch { /* silenzioso */ }
   }, []);
 
   const fetchApiConfig = useCallback(async () => {
     try {
-      const res = await fetch(`${EXT_API}/config/drug-api`);
+      const res = await extFetch(`/config/drug-api`);
       if (!res.ok) return;
       const d = await res.json();
       setApiProvider(d.provider ?? "chembl");
@@ -594,7 +592,7 @@ export default function Config() {
   const handleSaveCappa = async (name: string, tipologia: Tipologia, description: string | null) => {
     try {
       if (editingCappa) {
-        const res = await fetch(`${EXT_API}/config/cappe/${editingCappa.id}`, {
+        const res = await extFetch(`/config/cappe/${editingCappa.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, tipologia, description, active: editingCappa.active }),
@@ -603,7 +601,7 @@ export default function Config() {
         setCappe((prev) => prev.map((c) => c.id === editingCappa.id ? { ...c, name, tipologia, description } : c));
         toast.success("Cappa aggiornata");
       } else {
-        const res = await fetch(`${EXT_API}/config/cappe`, {
+        const res = await extFetch(`/config/cappe`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, tipologia, description }),
@@ -623,7 +621,7 @@ export default function Config() {
 
   const handleDeleteCappa = async (id: number) => {
     try {
-      const res = await fetch(`${EXT_API}/config/cappe/${id}`, { method: "DELETE" });
+      const res = await extFetch(`/config/cappe/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setCappe((prev) => prev.filter((c) => c.id !== id));
       toast.success("Cappa eliminata");
@@ -634,7 +632,7 @@ export default function Config() {
 
   const handleToggleActive = async (cappa: Cappa) => {
     try {
-      const res = await fetch(`${EXT_API}/config/cappe/${cappa.id}`, {
+      const res = await extFetch(`/config/cappe/${cappa.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: cappa.name, tipologia: cappa.tipologia, description: cappa.description, active: !cappa.active }),
@@ -648,7 +646,7 @@ export default function Config() {
 
   const handleAddDrugRule = async (cappaId: number, drugName: string, ruleType: RuleType) => {
     try {
-      const res = await fetch(`${EXT_API}/config/cappe/${cappaId}/drug-rules`, {
+      const res = await extFetch(`/config/cappe/${cappaId}/drug-rules`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ drugName, ruleType }),
@@ -663,7 +661,7 @@ export default function Config() {
 
   const handleDeleteDrugRule = async (ruleId: number, cappaId: number) => {
     try {
-      const res = await fetch(`${EXT_API}/config/drug-rules/${ruleId}`, { method: "DELETE" });
+      const res = await extFetch(`/config/drug-rules/${ruleId}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setCappe((prev) => prev.map((c) => c.id === cappaId ? { ...c, drugRules: c.drugRules.filter((r) => r.id !== ruleId) } : c));
     } catch (err: unknown) {
@@ -676,7 +674,7 @@ export default function Config() {
   const handleSaveDrug = async (name: string, code: string | null, category: string | null) => {
     try {
       if (editingDrug) {
-        const res = await fetch(`${EXT_API}/config/drugs/${editingDrug.id}`, {
+        const res = await extFetch(`/config/drugs/${editingDrug.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, code, category }),
@@ -685,7 +683,7 @@ export default function Config() {
         setDrugs((prev) => prev.map((d) => d.id === editingDrug.id ? { ...d, name, code, category } : d));
         toast.success("Farmaco aggiornato");
       } else {
-        const res = await fetch(`${EXT_API}/config/drugs`, {
+        const res = await extFetch(`/config/drugs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, code, category }),
@@ -705,7 +703,7 @@ export default function Config() {
 
   const handleDeleteDrug = async (id: number) => {
     try {
-      const res = await fetch(`${EXT_API}/config/drugs/${id}`, { method: "DELETE" });
+      const res = await extFetch(`/config/drugs/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setDrugs((prev) => prev.filter((d) => d.id !== id));
       toast.success("Farmaco rimosso dal catalogo");
@@ -724,7 +722,7 @@ export default function Config() {
   const handleAddCategory = async () => {
     if (!newCategory.trim()) return;
     try {
-      const res = await fetch(`${EXT_API}/config/categories`, {
+      const res = await extFetch(`/config/categories`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newCategory.trim() }),
@@ -740,7 +738,7 @@ export default function Config() {
 
   const handleDeleteCategory = async (id: number) => {
     try {
-      await fetch(`${EXT_API}/config/categories/${id}`, { method: "DELETE" });
+      await extFetch(`/config/categories/${id}`, { method: "DELETE" });
       setCategories((prev) => prev.filter((c) => c.id !== id));
     } catch (err: unknown) {
       toast.error("Errore nella rimozione", { description: String(err) });
@@ -752,7 +750,7 @@ export default function Config() {
   const handleSaveApiConfig = async () => {
     setSavingApi(true);
     try {
-      const res = await fetch(`${EXT_API}/config/drug-api`, {
+      const res = await extFetch(`/config/drug-api`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider: apiProvider, base_url: apiBaseUrl || null, api_key: apiKey || null }),
@@ -771,7 +769,7 @@ export default function Config() {
   const handleSaveStrategy = async () => {
     setSavingStrategy(true);
     try {
-      const res = await fetch(`${EXT_API}/config/assignment`, {
+      const res = await extFetch(`/config/assignment`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ strategy }),

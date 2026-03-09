@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import React from "react";
 import { preparations as initialPreparations, type Preparation, type Status, photoAssets } from "@/data/preparations";
+import { extFetch } from "@/lib/apiClient";
 
 export const rejectionReasons = [
   "Sovradosaggio",
@@ -21,7 +22,7 @@ function resolvePhoto(p: { type: string; label: string; assetKey?: string; barco
 }
 
 async function fetchPreparationsFromAPI(): Promise<Preparation[]> {
-  const res = await fetch("/ext-api/preparations?limit=300");
+  const res = await extFetch("/preparations?limit=300");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   // L'API esterna restituisce { data: [...], total, limit, offset }
