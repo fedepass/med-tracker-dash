@@ -1,7 +1,7 @@
 import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { CalendarIcon, CalendarCheck, ClipboardList, Archive, ShieldCheck, ShieldX } from "lucide-react";
+import { CalendarIcon, CalendarCheck, ClipboardList, Archive, ShieldCheck, ShieldX, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -241,6 +241,23 @@ const Index = () => {
           {/* ── Tab: Archivio ── */}
           <TabsContent value="archivio" className="mt-0 space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row">
+              <button
+                onClick={() => setValidationFilter(null)}
+                className={cn(
+                  "flex flex-1 items-center gap-4 rounded-xl border-2 bg-card p-5 shadow-sm transition-all hover:shadow-md text-left",
+                  validationFilter === null
+                    ? "border-primary text-primary"
+                    : "border-border"
+                )}
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <List className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{archivedRangePreps.length}</p>
+                  <p className="text-sm text-muted-foreground">Totale archivio</p>
+                </div>
+              </button>
               <button
                 onClick={() => setValidationFilter(validationFilter === "validata" ? null : "validata")}
                 className={cn(
