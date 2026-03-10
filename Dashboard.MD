@@ -1,8 +1,8 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 3.2
-**Date**: 2026-03-09
+**Version**: 3.3
+**Date**: 2026-03-10
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
 ### Changelog
@@ -49,6 +49,9 @@
 | 3.2 | 2026-03-09 | **PreparationsTable**: nuova colonna "Validazione" visibile in entrambe le tab; `statusConfig` ridotto a 4 valori; aggiunto `validationConfig` per badge validata/rifiutata; filtraggio archivio/attivo basato su `validationStatus` (non su `status`); bulk validate e selezione riga bloccata se `validationStatus !== null`; prop `validationFilter` aggiunta |
 | 3.2 | 2026-03-09 | **PreparationDetail**: pulsanti Valida/Rifiuta/Annulla e badge validazione basati su `prep.validationStatus` (non più su `prep.status`); `statusConfig` ridotto a 4 valori |
 | 3.2 | 2026-03-09 | **Analytics**: `STATUS_COLORS` e `STATUS_LABELS` ridotti a 4 valori; contatori KPI e completion rate non includono più `status==="validata"` |
+| 3.3 | 2026-03-10 | **StatCards — solo Da Valutare**: tutte le 5 card (Totale, Attesa, Esecuzione, Completate, Errori) filtrano su `validationStatus === null`; le preparazioni già validate/rifiutate non entrano nei contatori della tab "Da Valutare" |
+| 3.3 | 2026-03-10 | **Archivio — card filtro con numerica**: aggiunta card "Totale archivio" (resetta il filtro) affiancata a "Validate" e "Rifiutate"; ogni card mostra il contatore relativo al range di date selezionato; le card si comportano come toggle (click su card attiva → rimuove il filtro) |
+| 3.3 | 2026-03-10 | **Fix dettaglio preparazione**: MySQL restituisce `id` come intero; `useParams().id` è sempre stringa; confronto strict `===` falliva; fix: `id: String(r.id)` nel mapping API in `PreparationsContext` e `String(p.id) === id` in `PreparationDetail` |
 
 ---
 
