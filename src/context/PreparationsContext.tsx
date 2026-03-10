@@ -29,6 +29,7 @@ async function fetchPreparationsFromAPI(): Promise<Preparation[]> {
   const raw: any[] = Array.isArray(json) ? json : (json.data ?? []);
   return raw.map((r) => ({
     ...r,
+    id: String(r.id),
     // L'API esterna restituisce station come oggetto { id, name, tipologia }
     station: typeof r.station === "object" ? (r.station?.name ?? null) : r.station,
     photos: (r.photos ?? []).map(resolvePhoto),

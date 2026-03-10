@@ -45,7 +45,7 @@ const PreparationDetail = () => {
   const navigate = useNavigate();
   const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation } = usePreparations();
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const prep = preparations.find((p) => p.id === id);
+  const prep = preparations.find((p) => String(p.id) === id);
 
   if (!prep) {
     return (
