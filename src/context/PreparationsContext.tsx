@@ -30,9 +30,12 @@ async function fetchPreparationsFromAPI(): Promise<Preparation[]> {
   return raw.map((r) => ({
     ...r,
     id: String(r.id),
-    // L'API esterna restituisce station come oggetto { id, name, tipologia }
-    station: typeof r.station === "object" ? (r.station?.name ?? null) : r.station,
-    photos: (r.photos ?? []).map(resolvePhoto),
+    // L'API restituisce executor e station come oggetti { id, name, ... }
+    executor:         typeof r.executor === "object" ? (r.executor?.name     ?? null) : r.executor,
+    executorInitials: typeof r.executor === "object" ? (r.executor?.initials ?? null) : r.executorInitials,
+    station:          typeof r.station  === "object" ? (r.station?.name     ?? null) : r.station,
+    photos:             (r.photos             ?? []).map(resolvePhoto),
+    supplementaryDoses: r.supplementaryDoses ?? [],
   })) as Preparation[];
 }
 

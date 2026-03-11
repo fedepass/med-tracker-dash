@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { generateLabelPdf } from "@/lib/generateLabelPdf";
-import { type Status, type Priority, type ValidationStatus } from "@/data/preparations";
+import { type Status, type Priority, type ValidationStatus, type Preparation } from "@/data/preparations";
 import { usePreparations, type RejectionReason } from "@/context/PreparationsContext";
+import { extFetch } from "@/lib/apiClient";
 import Navbar from "@/components/dashboard/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +46,33 @@ const PreparationDetail = () => {
   const navigate = useNavigate();
   const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation } = usePreparations();
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const prep = preparations.find((p) => String(p.id) === id);
+  const [detailData, setDetailData] = useState<Preparation | null>(null);
+
+  // Fetch completo dalla API per avere photos e supplementaryDoses
+  useEffect(() => {
+    if (!id) return;
+    extFetch(`/preparations/${id}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        setDetailData({
+          ...data,
+          id: String(data.id),
+          executor:         typeof data.executor === "object" ? (data.executor?.name     ?? null) : data.executor,
+          executorInitials: typeof data.executor === "object" ? (data.executor?.initials ?? null) : data.executorInitials,
+          station:          typeof data.station  === "object" ? (data.station?.name     ?? null) : data.station,
+          photos:             (data.photos             ?? []),
+          supplementaryDoses: data.supplementaryDoses ?? [],
+        } as Preparation);
+      })
+      .catch(() => {});
+  }, [id]);
+
+  // Usa i dati dettagliati dall'API; fallback ai dati del context (per validationStatus ottimistico)
+  const contextPrep = preparations.find((p) => String(p.id) === id);
+  const prep = detailData
+    ? { ...detailData, validationStatus: contextPrep?.validationStatus ?? detailData.validationStatus }
+    : contextPrep;
 
   if (!prep) {
     return (
