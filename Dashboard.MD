@@ -1,8 +1,8 @@
 # Dashboard.MD — Product Requirements Document
 ## PharmAR System — Pharmaceutical Preparation Tracker Dashboard
 
-**Version**: 3.3
-**Date**: 2026-03-10
+**Version**: 3.4
+**Date**: 2026-03-11
 **Lingua**: Italiano (UI), TypeScript/React (stack tecnico)
 
 ### Changelog
@@ -52,6 +52,9 @@
 | 3.3 | 2026-03-10 | **StatCards — solo Da Valutare**: tutte le 5 card (Totale, Attesa, Esecuzione, Completate, Errori) filtrano su `validationStatus === null`; le preparazioni già validate/rifiutate non entrano nei contatori della tab "Da Valutare" |
 | 3.3 | 2026-03-10 | **Archivio — card filtro con numerica**: aggiunta card "Totale archivio" (resetta il filtro) affiancata a "Validate" e "Rifiutate"; ogni card mostra il contatore relativo al range di date selezionato; le card si comportano come toggle (click su card attiva → rimuove il filtro) |
 | 3.3 | 2026-03-10 | **Fix dettaglio preparazione**: MySQL restituisce `id` come intero; `useParams().id` è sempre stringa; confronto strict `===` falliva; fix: `id: String(r.id)` nel mapping API in `PreparationsContext` e `String(p.id) === id` in `PreparationDetail` |
+| 3.4 | 2026-03-11 | **Fix dati mancanti nel dettaglio**: il list endpoint `GET /preparations` non include `photos` né `supplementaryDoses`; `executor` restituito come oggetto `{id,name,initials}` invece di stringa → crash e dati errati nel dettaglio |
+| 3.4 | 2026-03-11 | **PreparationsContext**: aggiunta mappatura `executor.name → executor` e `executor.initials → executorInitials` (analoga a `station`); aggiunto default `supplementaryDoses: []` per evitare crash su `.length` nei dati da list endpoint |
+| 3.4 | 2026-03-11 | **PreparationDetail — fetch diretto API**: la pagina dettaglio esegue `GET /preparations/:id` al mount per ottenere i dati completi (photos, supplementaryDoses, labelData); `validationStatus` viene sincronizzato con il context per riflettere le azioni di valida/rifiuta eseguite in sessione |
 
 ---
 
