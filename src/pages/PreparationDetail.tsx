@@ -285,14 +285,20 @@ const PreparationDetail = () => {
                     <Separator />
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Erogato</span>
-                      <span className="font-medium text-foreground">{prep.dispensed} ml</span>
+                      {prep.dispensed > 0 ? (
+                        <span className="font-medium text-foreground">{prep.dispensed} ml</span>
+                      ) : (
+                        <span className="text-xs italic text-muted-foreground">N/D</span>
+                      )}
                     </div>
-                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={`h-full rounded-full transition-all ${prep.errorRate > 2 ? "bg-status-error" : "bg-status-complete"}`}
-                        style={{ width: `${progressPercent}%` }}
-                      />
-                    </div>
+                    {prep.dispensed > 0 && (
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={`h-full rounded-full transition-all ${prep.errorRate > 2 ? "bg-status-error" : "bg-status-complete"}`}
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    )}
                   </>
                 )}
                 <div className="flex justify-between text-sm">

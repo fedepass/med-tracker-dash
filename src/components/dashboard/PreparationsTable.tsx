@@ -315,15 +315,23 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                     {p.labelData.dosage && (
                       <p className="mb-1 text-sm font-medium text-foreground">{p.labelData.dosage}</p>
                     )}
-                    <p className="mb-1 text-xs text-muted-foreground">
-                      {p.dispensed} / {p.target} ml
-                    </p>
-                    <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={`h-full rounded-full transition-all ${progressColor(p.status, p.errorRate)}`}
-                        style={{ width: `${progressPercent(p.dispensed, p.target)}%` }}
-                      />
-                    </div>
+                    {p.status === "attesa" ? (
+                      <p className="mb-1 text-xs text-muted-foreground">{p.target} ml</p>
+                    ) : p.dispensed > 0 ? (
+                      <>
+                        <p className="mb-1 text-xs text-muted-foreground">
+                          {p.dispensed} / {p.target} ml
+                        </p>
+                        <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className={`h-full rounded-full transition-all ${progressColor(p.status, p.errorRate)}`}
+                            style={{ width: `${progressPercent(p.dispensed, p.target)}%` }}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <p className="mb-1 text-xs text-muted-foreground italic">N/D</p>
+                    )}
                   </td>
                   <td className="px-4 py-4">
                     {p.errorRate > 0 ? (
