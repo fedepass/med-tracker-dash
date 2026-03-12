@@ -85,7 +85,7 @@ const PreparationDetail = () => {
         <Navbar />
         <main className="mx-auto max-w-[1400px] px-4 py-12 text-center sm:px-6">
           <p className="text-lg text-muted-foreground">Preparazione non trovata.</p>
-          <Button variant="outline" className="mt-4" onClick={() => navigate("/")}>
+          <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Torna alla Dashboard
           </Button>
         </main>
@@ -103,7 +103,7 @@ const PreparationDetail = () => {
       <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
         {/* Back + Header */}
         <div className="mb-4">
-          <button onClick={() => navigate("/")} className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Torna alla Dashboard
           </button>
         </div>
@@ -142,7 +142,7 @@ const PreparationDetail = () => {
                   <>
                     <Button
                       className="gap-2 bg-status-complete text-primary-foreground hover:bg-status-complete/90"
-                      onClick={() => { validatePreparation(prep.id); navigate("/"); }}
+                      onClick={() => { validatePreparation(prep.id); navigate(-1); }}
                     >
                       <Check className="h-4 w-4" /> Valida
                     </Button>
@@ -163,7 +163,7 @@ const PreparationDetail = () => {
                   <Button
                     variant="outline"
                     className="gap-2"
-                    onClick={() => { undoPreparation(prep.id); navigate("/"); }}
+                    onClick={() => { undoPreparation(prep.id); navigate(-1); }}
                     title="Annulla validazione o rifiuto e ripristina lo stato precedente"
                   >
                     <RotateCcw className="h-4 w-4" /> Annulla
@@ -370,7 +370,7 @@ const PreparationDetail = () => {
           onConfirm={(reason) => {
             rejectPreparation(prep!.id, reason);
             setRejectDialogOpen(false);
-            navigate("/");
+            navigate(-1);
           }}
           onCancel={() => setRejectDialogOpen(false)}
         />
