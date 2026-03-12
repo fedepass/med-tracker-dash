@@ -160,6 +160,11 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
 
   const thClass = "px-4 py-3 cursor-pointer select-none hover:text-foreground transition-colors";
 
+  const fmtDate = (iso: string) => {
+    const [, mm, dd] = iso.split("-");
+    return `${dd}/${mm}`;
+  };
+
   // ── Empty state ──────────────────────────────────────────────────────────
   if (sorted.length === 0) {
     return (
@@ -307,8 +312,11 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                     <p className="text-xs text-muted-foreground mt-0.5">{p.container}</p>
                   </td>
                   <td className="px-4 py-4">
-                    <p className="mb-1 text-sm font-medium text-foreground">
-                      {p.labelData.dosage || `${p.dispensed}ml`}
+                    {p.labelData.dosage && (
+                      <p className="mb-1 text-sm font-medium text-foreground">{p.labelData.dosage}</p>
+                    )}
+                    <p className="mb-1 text-xs text-muted-foreground">
+                      {p.dispensed} / {p.target} ml
                     </p>
                     <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
                       <div
@@ -337,18 +345,18 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                     <div className="space-y-0.5 text-xs text-muted-foreground">
                       <p>
                         <Clock className="mr-1 inline h-3 w-3 text-status-waiting" />
-                        Richiesta: {p.requestedAt}
+                        Richiesta: {fmtDate(p.date)} {p.requestedAt}
                       </p>
                       {p.startedAt && (
                         <p>
                           <ArrowRight className="mr-1 inline h-3 w-3 text-status-progress" />
-                          Inizio: {p.startedAt}
+                          Inizio: {fmtDate(p.date)} {p.startedAt}
                         </p>
                       )}
                       {p.finishedAt && (
                         <p>
                           <Check className="mr-1 inline h-3 w-3 text-status-complete" />
-                          Fine: {p.finishedAt}
+                          Fine: {fmtDate(p.date)} {p.finishedAt}
                         </p>
                       )}
                       {p.status === "esecuzione" && (
