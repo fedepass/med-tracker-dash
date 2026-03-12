@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { generateLabelPdf } from "@/lib/generateLabelPdf";
-import { type Status, type Priority, type ValidationStatus, type Preparation } from "@/data/preparations";
+import { type Status, type Priority, type ValidationStatus, type Preparation, photoAssets } from "@/data/preparations";
 import { usePreparations, type RejectionReason } from "@/context/PreparationsContext";
 import { extFetch } from "@/lib/apiClient";
 import Navbar from "@/components/dashboard/Navbar";
@@ -61,7 +61,12 @@ const PreparationDetail = () => {
           executor:         typeof data.executor === "object" ? (data.executor?.name     ?? null) : data.executor,
           executorInitials: typeof data.executor === "object" ? (data.executor?.initials ?? null) : data.executorInitials,
           station:          typeof data.station  === "object" ? (data.station?.name     ?? null) : data.station,
-          photos:             (data.photos             ?? []),
+          photos: (data.photos ?? []).map((ph: any) => ({
+            type:    ph.type,
+            label:   ph.label,
+            url:     photoAssets[ph.assetKey as keyof typeof photoAssets] ?? ph.url ?? "",
+            barcode: ph.barcode ?? null,
+          })),
           supplementaryDoses: data.supplementaryDoses ?? [],
         } as Preparation);
       })

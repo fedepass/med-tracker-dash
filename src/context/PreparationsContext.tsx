@@ -86,8 +86,19 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Carica dal DB all'avvio
-  useEffect(() => { refreshPreparations(); }, [refreshPreparations]);
+  // Carica dal DB all'avvio, poi polling ogni 30 secondi
+  useEffect(() => {
+    refreshPreparations();
+    const interval = setInterval(refreshPreparations, 30_000);
+    return () => clearInterval(interval);
+  }, [refreshPreparations]);
+
+  // Refresh quando la finestra torna in focus (tab switching, Alt+Tab)
+  useEffect(() => {
+    const onFocus = () => refreshPreparations();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshPreparations]);
 
   const toggleBarcodeMode = useCallback(() => {
     setBarcodeMode((m) => (m === "detail" ? "select" : "detail"));
