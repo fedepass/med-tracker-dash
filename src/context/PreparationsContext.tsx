@@ -21,22 +21,68 @@ function resolvePhoto(p: { type: string; label: string; assetKey?: string; barco
   return { type: p.type as Preparation["photos"][number]["type"], label: p.label, url, barcode: p.barcode };
 }
 
+function mapPreparation(r: any): Preparation {
+  // Supporta sia il vecchio formato camelCase sia il nuovo snake_case
+  const isSnake = "validation_status" in r || "error_rate" in r;
+  const label = r.label ?? r.labelData ?? {};
+  return {
+    id:               String(r.id),
+    status:           r.status,
+    validationStatus: (isSnake ? r.validation_status : r.validationStatus) ?? null,
+    rejectionReason:  (isSnake ? r.rejection_reason  : r.rejectionReason)  ?? null,
+    previousStatus:   (isSnake ? r.previous_status   : r.previousStatus)   ?? null,
+    priority:         r.priority,
+    prepType:         (isSnake ? r.prep_type          : r.prepType)         ?? "",
+    drug:             r.drug,
+    form:             r.form      ?? "",
+    container:        r.container ?? "",
+    dispensed:        Number(r.dispensed),
+    target:           Number(r.target),
+    errorRate:        Number(isSnake ? r.error_rate : r.errorRate),
+    date:             String(r.date).slice(0, 10),
+    requestedAt:      r.requested_at != null ? String(r.requested_at).slice(0, 5) : (r.requestedAt ?? null),
+    startedAt:        r.started_at  != null ? String(r.started_at).slice(0,  5)  : (r.startedAt  ?? null),
+    finishedAt:       r.finished_at != null ? String(r.finished_at).slice(0,  5) : (r.finishedAt ?? null),
+    hl7PrescriptionId: (isSnake ? r.hl7_prescription_id : r.hl7PrescriptionId) ?? null,
+    executor:         typeof r.executor === "object" && r.executor !== null
+                        ? (r.executor.name ?? null)
+                        : (r.executor ?? null),
+    executorInitials: typeof r.executor === "object" && r.executor !== null
+                        ? (r.executor.initials ?? null)
+                        : (r.executorInitials ?? null),
+    station:          typeof r.station === "object" && r.station !== null
+                        ? (r.station.name ?? null)
+                        : (r.station ?? null),
+    labelData: {
+      patientId:   label.patient_id   ?? label.patientId   ?? "",
+      patientName: label.patient_name ?? label.patientName ?? "",
+      patientWard: label.patient_ward ?? label.patientWard ?? "",
+      drug:        label.drug         ?? r.drug,
+      dosage:      label.dosage       ?? "",
+      route:       label.route        ?? "",
+      volume:      label.volume       ?? "",
+      preparedBy:  label.prepared_by  ?? label.preparedBy  ?? "",
+      preparedAt:  label.prepared_at  ?? label.preparedAt  ?? "",
+      expiresAt:   label.expires_at   ?? label.expiresAt   ?? "",
+      lotNumber:   label.lot_number   ?? label.lotNumber   ?? "",
+      notes:       label.notes        ?? "",
+    },
+    photos: (r.photos ?? []).map(resolvePhoto),
+    supplementaryDoses: (r.supplementary_doses ?? r.supplementaryDoses ?? []).map((d: any) => ({
+      time:   String(d.dose_time ?? d.time ?? "").slice(0, 5),
+      amount: Number(d.amount),
+      unit:   d.unit   ?? "",
+      reason: d.reason ?? "",
+    })),
+  } as Preparation;
+}
+
 async function fetchPreparationsFromAPI(): Promise<Preparation[]> {
   const res = await extFetch("/preparations?limit=300");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
-  // L'API esterna restituisce { data: [...], total, limit, offset }
   const raw: any[] = Array.isArray(json) ? json : (json.data ?? []);
-  return raw.map((r) => ({
-    ...r,
-    id: String(r.id),
-    // L'API restituisce executor e station come oggetti { id, name, ... }
-    executor:         typeof r.executor === "object" ? (r.executor?.name     ?? null) : r.executor,
-    executorInitials: typeof r.executor === "object" ? (r.executor?.initials ?? null) : r.executorInitials,
-    station:          typeof r.station  === "object" ? (r.station?.name     ?? null) : r.station,
-    photos:             (r.photos             ?? []).map(resolvePhoto),
-    supplementaryDoses: r.supplementaryDoses ?? [],
-  })) as Preparation[];
+  return raw.map(mapPreparation);
 }
 
 interface PreparationsContextType {

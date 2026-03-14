@@ -55,19 +55,59 @@ const PreparationDetail = () => {
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (!data) return;
+        const isSnake = "validation_status" in data || "error_rate" in data;
+        const label = data.label ?? data.labelData ?? {};
         setDetailData({
-          ...data,
-          id: String(data.id),
-          executor:         typeof data.executor === "object" ? (data.executor?.name     ?? null) : data.executor,
-          executorInitials: typeof data.executor === "object" ? (data.executor?.initials ?? null) : data.executorInitials,
-          station:          typeof data.station  === "object" ? (data.station?.name     ?? null) : data.station,
+          id:               String(data.id),
+          status:           data.status,
+          validationStatus: (isSnake ? data.validation_status : data.validationStatus) ?? null,
+          rejectionReason:  (isSnake ? data.rejection_reason  : data.rejectionReason)  ?? null,
+          previousStatus:   (isSnake ? data.previous_status   : data.previousStatus)   ?? null,
+          priority:         data.priority,
+          prepType:         (isSnake ? data.prep_type         : data.prepType)          ?? "",
+          drug:             data.drug,
+          form:             data.form      ?? "",
+          container:        data.container ?? "",
+          dispensed:        Number(data.dispensed),
+          target:           Number(data.target),
+          errorRate:        Number(isSnake ? data.error_rate : data.errorRate),
+          date:             String(data.date).slice(0, 10),
+          requestedAt:      data.requested_at != null ? String(data.requested_at).slice(0, 5) : (data.requestedAt ?? null),
+          startedAt:        data.started_at  != null ? String(data.started_at).slice(0,  5)  : (data.startedAt  ?? null),
+          finishedAt:       data.finished_at != null ? String(data.finished_at).slice(0,  5) : (data.finishedAt ?? null),
+          hl7PrescriptionId: (isSnake ? data.hl7_prescription_id : data.hl7PrescriptionId) ?? null,
+          executor:         typeof data.executor === "object" && data.executor !== null
+                              ? (data.executor.name ?? null) : (data.executor ?? null),
+          executorInitials: typeof data.executor === "object" && data.executor !== null
+                              ? (data.executor.initials ?? null) : (data.executorInitials ?? null),
+          station:          typeof data.station === "object" && data.station !== null
+                              ? (data.station.name ?? null) : (data.station ?? null),
+          labelData: {
+            patientId:   label.patient_id   ?? label.patientId   ?? "",
+            patientName: label.patient_name ?? label.patientName ?? "",
+            patientWard: label.patient_ward ?? label.patientWard ?? "",
+            drug:        label.drug         ?? data.drug,
+            dosage:      label.dosage       ?? "",
+            route:       label.route        ?? "",
+            volume:      label.volume       ?? "",
+            preparedBy:  label.prepared_by  ?? label.preparedBy  ?? "",
+            preparedAt:  label.prepared_at  ?? label.preparedAt  ?? "",
+            expiresAt:   label.expires_at   ?? label.expiresAt   ?? "",
+            lotNumber:   label.lot_number   ?? label.lotNumber   ?? "",
+            notes:       label.notes        ?? "",
+          },
           photos: (data.photos ?? []).map((ph: any) => ({
             type:    ph.type,
             label:   ph.label,
             url:     photoAssets[ph.assetKey as keyof typeof photoAssets] ?? ph.url ?? "",
             barcode: ph.barcode ?? null,
           })),
-          supplementaryDoses: data.supplementaryDoses ?? [],
+          supplementaryDoses: (data.supplementary_doses ?? data.supplementaryDoses ?? []).map((d: any) => ({
+            time:   String(d.dose_time ?? d.time ?? "").slice(0, 5),
+            amount: Number(d.amount),
+            unit:   d.unit   ?? "",
+            reason: d.reason ?? "",
+          })),
         } as Preparation);
       })
       .catch(() => {});
