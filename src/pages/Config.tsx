@@ -58,6 +58,7 @@ interface Drug {
   reconstitution_volume: number | null;
   reconstitution_volume_unit: string | null;
   specific_gravity: number | null;
+  needs_review: boolean;
 }
 
 // ─── Strategy definitions ──────────────────────────────────────────────────────
@@ -835,6 +836,17 @@ export default function Config() {
     }
   };
 
+  const handleApproveDrug = async (id: number) => {
+    try {
+      const res = await extFetch(`/config/drugs/${id}/approve`, { method: "PATCH" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setDrugs((prev) => prev.map((d) => d.id === id ? { ...d, needs_review: false } : d));
+      toast.success("Farmaco verificato");
+    } catch (err: unknown) {
+      toast.error("Errore nella verifica", { description: String(err) });
+    }
+  };
+
   const filteredDrugs = drugs.filter((d) => {
     const q = drugSearch.toLowerCase();
     return !q || d.name.toLowerCase().includes(q) || (d.code ?? "").toLowerCase().includes(q) || (d.category ?? "").toLowerCase().includes(q);
@@ -1118,8 +1130,17 @@ export default function Config() {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {filteredDrugs.map((drug) => (
-                        <tr key={drug.id} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-3 font-medium text-foreground">{drug.name}</td>
+                        <tr key={drug.id} className={drug.needs_review ? "bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100/60 dark:hover:bg-yellow-900/40 transition-colors border-l-2 border-yellow-400" : "hover:bg-muted/20 transition-colors"}>
+                          <td className="px-4 py-3 font-medium text-foreground">
+                            <div className="flex items-center gap-2">
+                              {drug.name}
+                              {drug.needs_review && (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200 shrink-0">
+                                  DA VERIFICARE
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-4 py-3">
                             {drug.code
                               ? <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{drug.code}</span>
@@ -1145,6 +1166,13 @@ export default function Config() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1">
+                              {drug.needs_review && (
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-yellow-600 hover:text-green-600"
+                                  title="Segna come verificato"
+                                  onClick={() => handleApproveDrug(drug.id)}>
+                                  <ShieldCheck className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                               <Button variant="ghost" size="icon" className="h-7 w-7"
                                 onClick={() => { setEditingDrug(drug); setDrugDialogOpen(true); }}>
                                 <Edit2 className="h-3.5 w-3.5" />
