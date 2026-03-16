@@ -97,8 +97,8 @@ const Analytics = () => {
   }, [filtered]);
 
   const typeCounts = useMemo(() => {
-    const iv = filtered.filter((p) => p.prepType === "infusione_iv").length;
-    const syr = filtered.filter((p) => p.prepType === "siringa_ricostituita").length;
+    const iv = filtered.filter((p) => p.labelData.route && p.labelData.route.toUpperCase().includes("IV")).length;
+    const syr = filtered.length - iv;
     return [
       { name: "Infusione IV", value: iv, color: "hsl(215, 80%, 52%)" },
       { name: "Siringa", value: syr, color: "hsl(36, 90%, 52%)" },

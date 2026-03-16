@@ -28,7 +28,7 @@ function syncDaemonPlugin() {
   };
 }
 
-const EXT_API_KEY = "6fe02f93e500352fb85ed5aa3b3c20f79f10258a95f02c08c5720cdc4579f7a2";
+const EXT_API_KEY = "d40f6b5692fdad2da7305f953ea2289eb388e486ce79519a563f357ad64d19c7";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -37,10 +37,11 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     hmr: { overlay: false },
+    allowedHosts: ["ip87-106-10-111.pbiaas.com"],
     proxy: {
       // API esterna PharmAR — aggiunge automaticamente x-api-key (server-side, non esposta al browser)
       "/ext-api": {
-        target: "http://127.0.0.1:3002",
+        target: "https://ip87-106-10-111.pbiaas.com",
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/ext-api/, "/api/v1"),
         configure: (proxy) => {

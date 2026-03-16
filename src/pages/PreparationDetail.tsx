@@ -55,46 +55,40 @@ const PreparationDetail = () => {
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (!data) return;
-        const isSnake = "validation_status" in data || "error_rate" in data;
         const label = data.label ?? data.labelData ?? {};
         setDetailData({
           id:               String(data.id),
           status:           data.status,
-          validationStatus: (isSnake ? data.validation_status : data.validationStatus) ?? null,
-          rejectionReason:  (isSnake ? data.rejection_reason  : data.rejectionReason)  ?? null,
-          previousStatus:   (isSnake ? data.previous_status   : data.previousStatus)   ?? null,
+          validationStatus: data.validation_status ?? data.validationStatus ?? null,
+          rejectionReason:  data.rejection_reason  ?? data.rejectionReason  ?? null,
+          previousStatus:   data.previous_status   ?? data.previousStatus   ?? null,
           priority:         data.priority,
-          prepType:         (isSnake ? data.prep_type         : data.prepType)          ?? "",
           drug:             data.drug,
           form:             data.form      ?? "",
-          container:        data.container ?? "",
           dispensed:        Number(data.dispensed),
-          target:           Number(data.target),
-          errorRate:        Number(isSnake ? data.error_rate : data.errorRate),
+          volumeValue:      data.volume_value != null ? Number(data.volume_value) : null,
+          errorRate:        Number(data.error_rate ?? data.errorRate ?? 0),
           date:             String(data.date).slice(0, 10),
           requestedAt:      data.requested_at != null ? String(data.requested_at).slice(0, 5) : (data.requestedAt ?? null),
           startedAt:        data.started_at  != null ? String(data.started_at).slice(0,  5)  : (data.startedAt  ?? null),
           finishedAt:       data.finished_at != null ? String(data.finished_at).slice(0,  5) : (data.finishedAt ?? null),
-          hl7PrescriptionId: (isSnake ? data.hl7_prescription_id : data.hl7PrescriptionId) ?? null,
-          executor:         typeof data.executor === "object" && data.executor !== null
-                              ? (data.executor.name ?? null) : (data.executor ?? null),
-          executorInitials: typeof data.executor === "object" && data.executor !== null
-                              ? (data.executor.initials ?? null) : (data.executorInitials ?? null),
-          station:          typeof data.station === "object" && data.station !== null
-                              ? (data.station.name ?? null) : (data.station ?? null),
+          hl7PrescriptionId: data.hl7_prescription_id ?? data.hl7PrescriptionId ?? null,
+          executor:         data.executor_name ?? (typeof data.executor === "object" && data.executor !== null ? data.executor.name : data.executor) ?? null,
+          executorInitials: data.executor_initials ?? (typeof data.executor === "object" && data.executor !== null ? data.executor.initials : data.executorInitials) ?? null,
+          station:          data.cappa_name ?? (typeof data.station === "object" && data.station !== null ? data.station.name : data.station) ?? null,
           labelData: {
-            patientId:   label.patient_id   ?? label.patientId   ?? "",
-            patientName: label.patient_name ?? label.patientName ?? "",
-            patientWard: label.patient_ward ?? label.patientWard ?? "",
-            drug:        label.drug         ?? data.drug,
-            dosage:      label.dosage       ?? "",
-            route:       label.route        ?? "",
-            volume:      label.volume       ?? "",
-            preparedBy:  label.prepared_by  ?? label.preparedBy  ?? "",
-            preparedAt:  label.prepared_at  ?? label.preparedAt  ?? "",
-            expiresAt:   label.expires_at   ?? label.expiresAt   ?? "",
-            lotNumber:   label.lot_number   ?? label.lotNumber   ?? "",
-            notes:       label.notes        ?? "",
+            patientId:   data.patient_id   ?? label.patient_id   ?? label.patientId   ?? "",
+            patientName: data.patient_name ?? label.patient_name ?? label.patientName ?? "",
+            patientWard: data.patient_ward ?? label.patient_ward ?? label.patientWard ?? "",
+            drug:        label.drug        ?? data.drug ?? "",
+            dosage:      data.dosage       ?? label.dosage       ?? "",
+            route:       data.route        ?? label.route        ?? "",
+            volume:      data.volume       ?? label.volume       ?? "",
+            preparedBy:  label.prepared_by ?? label.preparedBy   ?? "",
+            preparedAt:  label.prepared_at ?? label.preparedAt   ?? "",
+            expiresAt:   label.expires_at  ?? label.expiresAt    ?? "",
+            lotNumber:   data.lot_number   ?? label.lot_number   ?? label.lotNumber ?? "",
+            notes:       data.notes        ?? label.notes        ?? "",
           },
           photos: (data.photos ?? []).map((ph: any) => ({
             type:    ph.type,
@@ -135,7 +129,7 @@ const PreparationDetail = () => {
 
   const sc = statusConfig[prep.status];
   const pc = priorityConfig[prep.priority];
-  const progressPercent = Math.min((prep.dispensed / prep.target) * 100, 100);
+  const progressPercent = prep.volumeValue ? Math.min((prep.dispensed / prep.volumeValue) * 100, 100) : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -163,7 +157,7 @@ const PreparationDetail = () => {
                 <p className="text-sm text-muted-foreground">
                   {prep.drug}
                   {prep.labelData.dosage && <> · <span className="font-medium text-foreground">{prep.labelData.dosage}</span></>}
-                  {prep.container && <> · {prep.container}</>}
+                  {prep.labelData.volume && <> · {prep.labelData.volume}</>}
                 </p>
               </div>
             </div>
@@ -317,7 +311,7 @@ const PreparationDetail = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Volume finale</span>
                   <span className="font-medium text-foreground">
-                    {prep.labelData.volume || `${prep.target} ml`}
+                    {prep.labelData.volume || (prep.volumeValue != null ? `${prep.volumeValue} ml` : "—")}
                   </span>
                 </div>
                 {(prep.status === "esecuzione" || prep.status === "completata" || prep.status === "errore") && (

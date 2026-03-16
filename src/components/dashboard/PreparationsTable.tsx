@@ -90,8 +90,8 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
     if (!search.trim()) return data;
     const q = search.toLowerCase();
     return data.filter((p) =>
-      [p.id, p.drug, p.form, p.container, p.executor, p.station, p.status, p.priority,
-        p.requestedAt, p.startedAt, p.finishedAt, String(p.errorRate), `${p.dispensed}`, `${p.target}`]
+      [p.id, p.drug, p.form, p.executor, p.station, p.status, p.priority,
+        p.requestedAt, p.startedAt, p.finishedAt, String(p.errorRate), `${p.dispensed}`]
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(q))
     );
@@ -106,7 +106,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
         case "status": cmp = statusOrder[a.status] - statusOrder[b.status] || priorityOrder[a.priority] - priorityOrder[b.priority]; break;
         case "priority": cmp = priorityOrder[a.priority] - priorityOrder[b.priority]; break;
         case "drug": cmp = a.drug.localeCompare(b.drug); break;
-        case "dispensed": cmp = (a.dispensed / a.target) - (b.dispensed / b.target); break;
+        case "dispensed": cmp = a.dispensed - b.dispensed; break;
         case "errorRate": cmp = a.errorRate - b.errorRate; break;
         case "executor": cmp = (a.executor ?? "").localeCompare(b.executor ?? ""); break;
         case "requestedAt": cmp = a.requestedAt.localeCompare(b.requestedAt); break;
@@ -309,25 +309,27 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                   </td>
                   <td className="px-4 py-4">
                     <p className="font-medium text-foreground">{p.drug}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{p.container}</p>
+                    {p.labelData.volume && <p className="text-xs text-muted-foreground mt-0.5">{p.labelData.volume}</p>}
                   </td>
                   <td className="px-4 py-4">
                     {p.labelData.dosage && (
                       <p className="mb-1 text-sm font-medium text-foreground">{p.labelData.dosage}</p>
                     )}
                     {p.status === "attesa" ? (
-                      <p className="mb-1 text-xs text-muted-foreground">{p.target} ml</p>
+                      <p className="mb-1 text-xs text-muted-foreground">{p.volumeValue != null ? `${p.volumeValue} ml` : "—"}</p>
                     ) : p.dispensed > 0 ? (
                       <>
                         <p className="mb-1 text-xs text-muted-foreground">
-                          {p.dispensed} / {p.target} ml
+                          {p.dispensed}{p.volumeValue != null ? ` / ${p.volumeValue}` : ""} ml
                         </p>
-                        <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={`h-full rounded-full transition-all ${progressColor(p.status, p.errorRate)}`}
-                            style={{ width: `${progressPercent(p.dispensed, p.target)}%` }}
-                          />
-                        </div>
+                        {p.volumeValue != null && (
+                          <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={`h-full rounded-full transition-all ${progressColor(p.status, p.errorRate)}`}
+                              style={{ width: `${progressPercent(p.dispensed, p.volumeValue)}%` }}
+                            />
+                          </div>
+                        )}
                       </>
                     ) : (
                       <p className="mb-1 text-xs text-muted-foreground italic">N/D</p>
@@ -408,7 +410,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                             </button>
                             <button
                               onClick={() => {
-                                const def = p.status === "errore" && p.dispensed > p.target ? "Sovradosaggio" : p.status === "errore" && p.dispensed < p.target && p.dispensed > 0 ? "Sottodosaggio" : undefined;
+                                const def = p.status === "errore" && p.volumeValue != null && p.dispensed > p.volumeValue ? "Sovradosaggio" : p.status === "errore" && p.volumeValue != null && p.dispensed < p.volumeValue && p.dispensed > 0 ? "Sottodosaggio" : undefined;
                                 setRejectDefaultReason(def);
                                 setRejectTargetIds([p.id]);
                                 setRejectDialogOpen(true);

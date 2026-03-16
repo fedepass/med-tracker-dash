@@ -22,50 +22,43 @@ function resolvePhoto(p: { type: string; label: string; assetKey?: string; barco
 }
 
 function mapPreparation(r: any): Preparation {
-  // Supporta sia il vecchio formato camelCase sia il nuovo snake_case
-  const isSnake = "validation_status" in r || "error_rate" in r;
+  // L'API restituisce campi flat (snake_case). Supporta anche il vecchio formato annidato.
   const label = r.label ?? r.labelData ?? {};
   return {
     id:               String(r.id),
     status:           r.status,
-    validationStatus: (isSnake ? r.validation_status : r.validationStatus) ?? null,
-    rejectionReason:  (isSnake ? r.rejection_reason  : r.rejectionReason)  ?? null,
-    previousStatus:   (isSnake ? r.previous_status   : r.previousStatus)   ?? null,
+    validationStatus: r.validation_status ?? r.validationStatus ?? null,
+    rejectionReason:  r.rejection_reason  ?? r.rejectionReason  ?? null,
+    previousStatus:   r.previous_status   ?? r.previousStatus   ?? null,
     priority:         r.priority,
-    prepType:         (isSnake ? r.prep_type          : r.prepType)         ?? "",
     drug:             r.drug,
     form:             r.form      ?? "",
-    container:        r.container ?? "",
     dispensed:        Number(r.dispensed),
-    target:           Number(r.target),
-    errorRate:        Number(isSnake ? r.error_rate : r.errorRate),
+    volumeValue:      r.volume_value != null ? Number(r.volume_value) : null,
+    errorRate:        Number(r.error_rate ?? r.errorRate ?? 0),
     date:             String(r.date).slice(0, 10),
     requestedAt:      r.requested_at != null ? String(r.requested_at).slice(0, 5) : (r.requestedAt ?? null),
     startedAt:        r.started_at  != null ? String(r.started_at).slice(0,  5)  : (r.startedAt  ?? null),
     finishedAt:       r.finished_at != null ? String(r.finished_at).slice(0,  5) : (r.finishedAt ?? null),
-    hl7PrescriptionId: (isSnake ? r.hl7_prescription_id : r.hl7PrescriptionId) ?? null,
-    executor:         typeof r.executor === "object" && r.executor !== null
-                        ? (r.executor.name ?? null)
-                        : (r.executor ?? null),
-    executorInitials: typeof r.executor === "object" && r.executor !== null
-                        ? (r.executor.initials ?? null)
-                        : (r.executorInitials ?? null),
-    station:          typeof r.station === "object" && r.station !== null
-                        ? (r.station.name ?? null)
-                        : (r.station ?? null),
+    hl7PrescriptionId: r.hl7_prescription_id ?? r.hl7PrescriptionId ?? null,
+    // API piatta: executor_name/cappa_name; oppure oggetto annidato (formato legacy)
+    executor:         r.executor_name ?? (typeof r.executor === "object" && r.executor !== null ? r.executor.name : r.executor) ?? null,
+    executorInitials: r.executor_initials ?? (typeof r.executor === "object" && r.executor !== null ? r.executor.initials : r.executorInitials) ?? null,
+    station:          r.cappa_name ?? (typeof r.station === "object" && r.station !== null ? r.station.name : r.station) ?? null,
     labelData: {
-      patientId:   label.patient_id   ?? label.patientId   ?? "",
-      patientName: label.patient_name ?? label.patientName ?? "",
-      patientWard: label.patient_ward ?? label.patientWard ?? "",
-      drug:        label.drug         ?? r.drug,
-      dosage:      label.dosage       ?? "",
-      route:       label.route        ?? "",
-      volume:      label.volume       ?? "",
+      // Campi flat dall'API (priorità) poi fallback su oggetto label annidato
+      patientId:   r.patient_id    ?? label.patient_id   ?? label.patientId   ?? "",
+      patientName: r.patient_name  ?? label.patient_name ?? label.patientName ?? "",
+      patientWard: r.patient_ward  ?? label.patient_ward ?? label.patientWard ?? "",
+      drug:        label.drug      ?? r.drug ?? "",
+      dosage:      r.dosage        ?? label.dosage       ?? "",
+      route:       r.route         ?? label.route        ?? "",
+      volume:      r.volume        ?? label.volume       ?? "",
       preparedBy:  label.prepared_by  ?? label.preparedBy  ?? "",
       preparedAt:  label.prepared_at  ?? label.preparedAt  ?? "",
       expiresAt:   label.expires_at   ?? label.expiresAt   ?? "",
-      lotNumber:   label.lot_number   ?? label.lotNumber   ?? "",
-      notes:       label.notes        ?? "",
+      lotNumber:   r.lot_number    ?? label.lot_number   ?? label.lotNumber   ?? "",
+      notes:       r.notes         ?? label.notes        ?? "",
     },
     photos: (r.photos ?? []).map(resolvePhoto),
     supplementaryDoses: (r.supplementary_doses ?? r.supplementaryDoses ?? []).map((d: any) => ({
@@ -165,7 +158,7 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
     extFetch(`/preparations/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ validationStatus: "validata" }),
+      body: JSON.stringify({ validation_status: "validata" }),
     }).catch(() => {});
   }, []);
 
@@ -175,7 +168,7 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
     extFetch(`/preparations/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ validationStatus: "rifiutata", rejectionReason: reason }),
+      body: JSON.stringify({ validation_status: "rifiutata", rejection_reason: reason }),
     }).catch(() => {});
   }, []);
 
@@ -190,7 +183,7 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
     extFetch(`/preparations/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ validationStatus: null, rejectionReason: null }),
+      body: JSON.stringify({ validation_status: null, rejection_reason: null }),
     }).catch(() => {});
   }, []);
 

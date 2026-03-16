@@ -529,7 +529,20 @@ export default function Config() {
     try {
       const res = await extFetch(`/cappe`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: Cappa[] = await res.json();
+      const raw: any[] = await res.json();
+      const data: Cappa[] = raw.map((c: any) => ({
+        id:          c.id,
+        name:        c.name,
+        tipologia:   c.tipologia,
+        description: c.description ?? null,
+        active:      c.active,
+        drugRules: (c.drug_rules ?? c.drugRules ?? []).map((r: any) => ({
+          id:       r.id,
+          cappaId:  r.cappa_id  ?? r.cappaId,
+          drugName: r.drug_name ?? r.drugName,
+          ruleType: r.rule_type ?? r.ruleType,
+        })),
+      }));
       setCappe(data);
     } catch {
       toast.error("Impossibile caricare le cappe");
@@ -607,7 +620,15 @@ export default function Config() {
           body: JSON.stringify({ name, tipologia, description }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const created: Cappa = await res.json();
+        const raw = await res.json();
+        const created: Cappa = {
+          id:          raw.id,
+          name:        raw.name,
+          tipologia:   raw.tipologia,
+          description: raw.description ?? null,
+          active:      raw.active ?? true,
+          drugRules:   [],
+        };
         setCappe((prev) => [...prev, created]);
         toast.success("Cappa creata");
       }
@@ -649,10 +670,16 @@ export default function Config() {
       const res = await extFetch(`/config/cappe/${cappaId}/drug-rules`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ drugName, ruleType }),
+        body: JSON.stringify({ drug_name: drugName, rule_type: ruleType }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const rule: DrugRule = await res.json();
+      const r: any = await res.json();
+      const rule: DrugRule = {
+        id:       r.id,
+        cappaId:  r.cappa_id  ?? r.cappaId,
+        drugName: r.drug_name ?? r.drugName,
+        ruleType: r.rule_type ?? r.ruleType,
+      };
       setCappe((prev) => prev.map((c) => c.id === cappaId ? { ...c, drugRules: [...c.drugRules, rule] } : c));
     } catch (err: unknown) {
       toast.error("Errore nell'aggiunta della regola", { description: String(err) });
