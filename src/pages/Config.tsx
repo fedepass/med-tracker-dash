@@ -53,6 +53,11 @@ interface Drug {
   name: string;
   code: string | null;
   category: string | null;
+  is_powder: boolean;
+  diluent: string | null;
+  reconstitution_volume: number | null;
+  reconstitution_volume_unit: string | null;
+  specific_gravity: number | null;
 }
 
 // ─── Strategy definitions ──────────────────────────────────────────────────────
@@ -324,26 +329,36 @@ interface LookupResult { name: string; code: string | null; category: string | n
 interface DrugDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (name: string, code: string | null, category: string | null) => void;
-  initial?: Pick<Drug, "name" | "code" | "category">;
+  onSave: (data: Omit<Drug, "id">) => void;
+  initial?: Drug;
   categories: string[];
   title: string;
 }
 
 function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugDialogProps) {
-  const [name,          setName]          = useState(initial?.name     ?? "");
-  const [code,          setCode]          = useState(initial?.code     ?? "");
-  const [category,      setCategory]      = useState(initial?.category ?? "");
-  const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupResults, setLookupResults] = useState<LookupResult[]>([]);
-  const [lookupError,   setLookupError]   = useState<string | null>(null);
-  const [catSuggestions, setCatSuggestions] = useState<string[]>([]);
+  const [name,                    setName]                    = useState(initial?.name ?? "");
+  const [code,                    setCode]                    = useState(initial?.code ?? "");
+  const [category,                setCategory]                = useState(initial?.category ?? "");
+  const [isPowder,                setIsPowder]                = useState(initial?.is_powder ?? false);
+  const [diluent,                 setDiluent]                 = useState(initial?.diluent ?? "");
+  const [reconVolume,             setReconVolume]             = useState(initial?.reconstitution_volume?.toString() ?? "");
+  const [reconVolumeUnit,         setReconVolumeUnit]         = useState(initial?.reconstitution_volume_unit ?? "ml");
+  const [specificGravity,         setSpecificGravity]         = useState(initial?.specific_gravity?.toString() ?? "");
+  const [lookupLoading,           setLookupLoading]           = useState(false);
+  const [lookupResults,           setLookupResults]           = useState<LookupResult[]>([]);
+  const [lookupError,             setLookupError]             = useState<string | null>(null);
+  const [catSuggestions,          setCatSuggestions]          = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
       setName(initial?.name ?? "");
       setCode(initial?.code ?? "");
       setCategory(initial?.category ?? "");
+      setIsPowder(initial?.is_powder ?? false);
+      setDiluent(initial?.diluent ?? "");
+      setReconVolume(initial?.reconstitution_volume?.toString() ?? "");
+      setReconVolumeUnit(initial?.reconstitution_volume_unit ?? "ml");
+      setSpecificGravity(initial?.specific_gravity?.toString() ?? "");
       setLookupResults([]);
       setLookupError(null);
     }
@@ -378,9 +393,22 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
     ? categories.filter((c) => c.toLowerCase().includes(category.toLowerCase()) && c !== category)
     : [];
 
+  const handleSave = () => {
+    onSave({
+      name: name.trim(),
+      code: code.trim() || null,
+      category: category.trim() || null,
+      is_powder: isPowder,
+      diluent: isPowder && diluent.trim() ? diluent.trim() : null,
+      reconstitution_volume: isPowder && reconVolume ? parseFloat(reconVolume) : null,
+      reconstitution_volume_unit: isPowder && reconVolume ? reconVolumeUnit : null,
+      specific_gravity: specificGravity ? parseFloat(specificGravity) : null,
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>Inserisci il nome e cerca automaticamente codice e categoria.</DialogDescription>
@@ -482,13 +510,81 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
               </div>
             )}
           </div>
+
+          <div className="border-t border-border pt-3 space-y-3">
+            {/* Checkbox farmaco in polvere */}
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-border accent-primary"
+                checked={isPowder}
+                onChange={(e) => setIsPowder(e.target.checked)}
+              />
+              <span className="text-sm font-medium">Farmaco in polvere (richiede ricostituzione)</span>
+            </label>
+
+            {/* Campi ricostituzione — visibili solo se is_powder */}
+            {isPowder && (
+              <div className="pl-6 space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="drug-diluent">Diluente <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                  <Input
+                    id="drug-diluent"
+                    placeholder="Es. Acqua PPI, NaCl 0.9%"
+                    value={diluent}
+                    onChange={(e) => setDiluent(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Quantità diluente per ricostituzione</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="Es. 10"
+                      value={reconVolume}
+                      onChange={(e) => setReconVolume(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Select value={reconVolumeUnit} onValueChange={setReconVolumeUnit}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ml">ml</SelectItem>
+                        <SelectItem value="L">L</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Peso specifico — sempre visibile */}
+            <div className="space-y-1.5">
+              <Label htmlFor="drug-sg">
+                Peso specifico della soluzione <span className="text-muted-foreground font-normal">(g/ml, opzionale)</span>
+              </Label>
+              <Input
+                id="drug-sg"
+                type="number"
+                min="0"
+                step="0.0001"
+                placeholder="Es. 1.0050 (acqua ≈ 1)"
+                value={specificGravity}
+                onChange={(e) => setSpecificGravity(e.target.value)}
+                className="font-mono"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Usato per convertire il peso (g) in volume (ml): ml = g ÷ peso specifico
+              </p>
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Annulla</Button>
-          <Button
-            onClick={() => onSave(name.trim(), code.trim() || null, category.trim() || null)}
-            disabled={!name.trim()}
-          >
+          <Button onClick={handleSave} disabled={!name.trim()}>
             Salva
           </Button>
         </DialogFooter>
@@ -698,22 +794,22 @@ export default function Config() {
 
   // ─── Drugs CRUD ───────────────────────────────────────────────────────────
 
-  const handleSaveDrug = async (name: string, code: string | null, category: string | null) => {
+  const handleSaveDrug = async (data: Omit<Drug, "id">) => {
     try {
       if (editingDrug) {
         const res = await extFetch(`/config/drugs/${editingDrug.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, code, category }),
+          body: JSON.stringify(data),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setDrugs((prev) => prev.map((d) => d.id === editingDrug.id ? { ...d, name, code, category } : d));
+        setDrugs((prev) => prev.map((d) => d.id === editingDrug.id ? { ...d, ...data } : d));
         toast.success("Farmaco aggiornato");
       } else {
         const res = await extFetch(`/config/drugs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, code, category }),
+          body: JSON.stringify(data),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const created: Drug = await res.json();
@@ -1014,6 +1110,9 @@ export default function Config() {
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Nome</th>
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Codice</th>
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Categoria</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Polvere</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Ricostituzione</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Peso spec.</th>
                         <th className="px-4 py-2.5 w-20" />
                       </tr>
                     </thead>
@@ -1030,6 +1129,19 @@ export default function Config() {
                             {drug.category
                               ? <Badge variant="secondary" className="text-[11px] font-normal">{drug.category}</Badge>
                               : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {drug.is_powder
+                              ? <Check className="h-4 w-4 text-primary mx-auto" />
+                              : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
+                            {drug.is_powder && drug.reconstitution_volume
+                              ? <span>{drug.reconstitution_volume} {drug.reconstitution_volume_unit ?? "ml"}{drug.diluent ? ` · ${drug.diluent}` : ""}</span>
+                              : <span>—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
+                            {drug.specific_gravity ?? <span>—</span>}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1">
