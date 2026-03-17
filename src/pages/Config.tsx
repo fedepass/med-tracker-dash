@@ -285,8 +285,37 @@ function CappaDialog({ open, onClose, onSaved, initial, categories, title }: Cap
             )}
 
             {/* Form aggiunta */}
-            <div className="space-y-2">
-              <div className="flex gap-2">
+            <div className="rounded-md border border-border p-3 space-y-3 bg-muted/20">
+              {/* Toggle Farmaco / Categoria */}
+              <div className="flex rounded-md border border-border overflow-hidden w-fit">
+                <button
+                  type="button"
+                  onClick={() => { setRuleTarget("drug"); setRuleCat(""); }}
+                  className={cn(
+                    "px-4 py-1.5 text-xs font-medium transition-colors",
+                    ruleTarget === "drug"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  Farmaco specifico
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRuleTarget("category"); setRuleDrugName(""); }}
+                  className={cn(
+                    "px-4 py-1.5 text-xs font-medium transition-colors border-l border-border",
+                    ruleTarget === "category"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  Categoria
+                </button>
+              </div>
+
+              {/* Tipo regola + valore + aggiungi */}
+              <div className="flex gap-2 items-center flex-wrap">
                 <Select value={ruleType} onValueChange={(v) => setRuleType(v as RuleType)}>
                   <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -294,18 +323,10 @@ function CappaDialog({ open, onClose, onSaved, initial, categories, title }: Cap
                     <SelectItem value="mandatory">Obbligatorio</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={ruleTarget} onValueChange={(v) => setRuleTarget(v as "drug" | "category")}>
-                  <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="drug">Farmaco</SelectItem>
-                    <SelectItem value="category">Categoria</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex gap-2">
+
                 {ruleTarget === "drug" ? (
                   <Input
-                    className="h-8 text-xs flex-1"
+                    className="h-8 text-xs flex-1 min-w-[160px]"
                     placeholder="Nome farmaco (es. Vancomicina)..."
                     value={ruleDrugName}
                     onChange={(e) => setRuleDrugName(e.target.value)}
@@ -313,18 +334,28 @@ function CappaDialog({ open, onClose, onSaved, initial, categories, title }: Cap
                   />
                 ) : (
                   <Select value={ruleCat} onValueChange={setRuleCat}>
-                    <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectTrigger className="h-8 text-xs flex-1 min-w-[160px]">
                       <SelectValue placeholder="Seleziona categoria..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {categories.length > 0
+                        ? categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)
+                        : <div className="px-3 py-2 text-xs text-muted-foreground italic">Nessuna categoria disponibile</div>
+                      }
                     </SelectContent>
                   </Select>
                 )}
-                <Button type="button" size="sm" variant="outline" className="h-8 px-3 shrink-0" disabled={!canAddRule} onClick={handleAddRule}>
+
+                <Button type="button" size="sm" className="h-8 px-3 shrink-0" disabled={!canAddRule} onClick={handleAddRule}>
                   <Plus className="h-3.5 w-3.5 mr-1" /> Aggiungi
                 </Button>
               </div>
+
+              {ruleType === "mandatory" && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 italic">
+                  Obbligatorio: questa cappa accetterà SOLO le preparazioni che corrispondono a questa voce.
+                </p>
+              )}
             </div>
           </div>
         </div>
