@@ -224,7 +224,6 @@ function CappaCard({
   onDeleteDrugRule: (ruleId: number) => void;
   categories: string[];
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [ruleTarget, setRuleTarget] = useState<"drug" | "category">("drug");
   const [drugName, setDrugName] = useState("");
   const [ruleCategory, setRuleCategory] = useState("");
@@ -293,77 +292,73 @@ function CappaCard({
             </Button>
           </div>
         </div>
-        <CardDescription
-          className="text-xs cursor-pointer hover:text-foreground transition-colors"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {cappa.drugRules.length > 0
-            ? `${cappa.drugRules.length} regola/e farmaci — ${expanded ? "Nascondi" : "Mostra"}`
-            : `Nessuna regola — ${expanded ? "Nascondi" : "Aggiungi regola farmaci"}`}
-        </CardDescription>
       </CardHeader>
 
-      {expanded && (
-        <CardContent className="pt-0 space-y-2">
-          {cappa.drugRules.map((rule) => (
-            <DrugRuleRow key={rule.id} rule={rule} onDelete={() => onDeleteDrugRule(rule.id)} />
-          ))}
-          <div className="space-y-2 pt-1">
-            {/* Riga 1: tipo regola + target (farmaco / categoria) */}
-            <div className="flex items-center gap-2">
-              <Select value={ruleType} onValueChange={(v) => setRuleType(v as RuleType)}>
-                <SelectTrigger className="h-8 w-32 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="excluded">Escluso</SelectItem>
-                  <SelectItem value="mandatory">Obbligatorio</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={ruleTarget} onValueChange={(v) => setRuleTarget(v as "drug" | "category")}>
-                <SelectTrigger className="h-8 w-32 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="drug">Farmaco</SelectItem>
-                  <SelectItem value="category">Categoria</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {/* Riga 2: valore + pulsante aggiungi */}
-            <div className="flex items-center gap-2">
-              {ruleTarget === "drug" ? (
-                <Input
-                  className="h-8 text-xs flex-1"
-                  placeholder="Nome farmaco (es. Vancomicina)..."
-                  value={drugName}
-                  onChange={(e) => setDrugName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-                />
-              ) : (
-                <Select value={ruleCategory} onValueChange={setRuleCategory}>
-                  <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="Seleziona categoria..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              <Button size="sm" className="h-8 px-2" disabled={!canAdd} onClick={handleAdd}>
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            {ruleType === "mandatory" && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400 italic">
-                Obbligatorio: questa cappa accetterà SOLO le preparazioni che corrispondono.
-              </p>
-            )}
+      <CardContent className="pt-0 space-y-3">
+        {/* Regole esistenti */}
+        {cappa.drugRules.length > 0 ? (
+          <div className="space-y-1.5">
+            {cappa.drugRules.map((rule) => (
+              <DrugRuleRow key={rule.id} rule={rule} onDelete={() => onDeleteDrugRule(rule.id)} />
+            ))}
           </div>
-        </CardContent>
-      )}
+        ) : (
+          <p className="text-xs text-muted-foreground italic">Nessun filtro — accetta tutte le preparazioni.</p>
+        )}
+
+        {/* Form aggiunta regola */}
+        <div className="border-t border-border pt-3 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Aggiungi filtro</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={ruleType} onValueChange={(v) => setRuleType(v as RuleType)}>
+              <SelectTrigger className="h-8 w-32 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="excluded">Escluso</SelectItem>
+                <SelectItem value="mandatory">Obbligatorio</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={ruleTarget} onValueChange={(v) => setRuleTarget(v as "drug" | "category")}>
+              <SelectTrigger className="h-8 w-32 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="drug">Farmaco</SelectItem>
+                <SelectItem value="category">Categoria</SelectItem>
+              </SelectContent>
+            </Select>
+            {ruleTarget === "drug" ? (
+              <Input
+                className="h-8 text-xs flex-1 min-w-[160px]"
+                placeholder="Nome farmaco (es. Vancomicina)..."
+                value={drugName}
+                onChange={(e) => setDrugName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+              />
+            ) : (
+              <Select value={ruleCategory} onValueChange={setRuleCategory}>
+                <SelectTrigger className="h-8 text-xs flex-1 min-w-[160px]">
+                  <SelectValue placeholder="Seleziona categoria..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button size="sm" className="h-8 px-3" disabled={!canAdd} onClick={handleAdd}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Aggiungi
+            </Button>
+          </div>
+          {ruleType === "mandatory" && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 italic">
+              Obbligatorio: questa cappa accetterà SOLO le preparazioni che corrispondono.
+            </p>
+          )}
+        </div>
+      </CardContent>
     </Card>
   );
 }
