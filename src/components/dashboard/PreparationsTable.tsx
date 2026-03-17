@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type Status, type Priority, type ValidationStatus } from "@/data/preparations";
 import { usePreparations, type RejectionReason } from "@/context/PreparationsContext";
 import RejectDialog from "./RejectDialog";
@@ -46,7 +47,7 @@ interface PreparationsTableProps {
 
 const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dateTo }: PreparationsTableProps) => {
   const navigate = useNavigate();
-  const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation, barcodeSelectedIds, tableSelected: selected, setTableSelected: setSelected } = usePreparations();
+  const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation, reassignCappa, cappe, barcodeSelectedIds, tableSelected: selected, setTableSelected: setSelected } = usePreparations();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -334,11 +335,32 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                       <span className="text-muted-foreground">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-4">
-                    {p.station ? (
-                      <p className="text-sm font-medium text-foreground">{p.station}</p>
+                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                    {mode === "active" && cappe.length > 0 ? (
+                      <Select
+                        value={p.cappaId != null ? String(p.cappaId) : "__none__"}
+                        onValueChange={(val) => {
+                          const id = val === "__none__" ? null : Number(val);
+                          const name = id != null ? (cappe.find((c) => c.id === id)?.name ?? null) : null;
+                          reassignCappa(p.id, id, name);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs w-36 border-dashed">
+                          <SelectValue placeholder="Non assegnata" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">
+                            <span className="text-muted-foreground italic">Non assegnata</span>
+                          </SelectItem>
+                          {cappe.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
-                      <span className="text-xs text-muted-foreground italic">Non assegnata</span>
+                      <span className={p.station ? "text-sm font-medium text-foreground" : "text-xs text-muted-foreground italic"}>
+                        {p.station ?? "Non assegnata"}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-4">

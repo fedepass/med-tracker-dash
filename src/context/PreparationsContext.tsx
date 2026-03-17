@@ -45,6 +45,7 @@ function mapPreparation(r: any): Preparation {
     executor:         r.executor_name ?? (typeof r.executor === "object" && r.executor !== null ? r.executor.name : r.executor) ?? null,
     executorInitials: r.executor_initials ?? (typeof r.executor === "object" && r.executor !== null ? r.executor.initials : r.executorInitials) ?? null,
     station:          r.cappa_name ?? (typeof r.station === "object" && r.station !== null ? r.station.name : r.station) ?? null,
+    cappaId:          r.cappa_id   ?? null,
     labelData: {
       // Campi flat dall'API (priorità) poi fallback su oggetto label annidato
       patientId:   r.patient_id    ?? label.patient_id   ?? label.patientId   ?? "",
@@ -86,6 +87,8 @@ interface PreparationsContextType {
   rejectPreparation: (id: string, reason: RejectionReason) => void;
   getRejectionReason: (id: string) => RejectionReason | undefined;
   undoPreparation: (id: string) => void;
+  reassignCappa: (prepId: string, cappaId: number | null, cappaName: string | null) => void;
+  cappe: { id: number; name: string }[];
   barcodeMode: "detail" | "select";
   toggleBarcodeMode: () => void;
   barcodeSelectedIds: string[];
@@ -110,6 +113,14 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
   const [barcodeMode, setBarcodeMode] = useState<"detail" | "select">("detail");
   const [barcodeSelectedIds, setBarcodeSelectedIds] = useState<string[]>([]);
   const [tableSelected, setTableSelected] = useState<Set<string>>(new Set());
+  const [cappe, setCappe] = useState<{ id: number; name: string }[]>([]);
+
+  // Carica elenco cappe (per il select di riassegnazione)
+  useEffect(() => {
+    extFetch("/cappe").then((r) => r.ok ? r.json() : [])
+      .then((data: any[]) => setCappe(data.map((c) => ({ id: c.id, name: c.name }))))
+      .catch(() => {});
+  }, []);
 
   const refreshPreparations = useCallback(async () => {
     try {
@@ -178,6 +189,15 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
     [rejectionMap]
   );
 
+  const reassignCappa = useCallback((prepId: string, cappaId: number | null, cappaName: string | null) => {
+    setPreps((prev) => prev.map((p) => p.id === prepId ? { ...p, cappaId, station: cappaName } : p));
+    extFetch(`/preparations/${prepId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cappa_id: cappaId }),
+    }).catch(() => {});
+  }, []);
+
   const undoPreparation = useCallback((id: string) => {
     setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: null } : p)));
     setRejectionMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
@@ -191,6 +211,7 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
   return (
     <PreparationsContext.Provider value={{
       preparations: preps, refreshPreparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation,
+      reassignCappa, cappe,
       barcodeMode, toggleBarcodeMode, barcodeSelectedIds, addBarcodeSelection, clearBarcodeSelection,
       tableSelected, setTableSelected,
     }}>

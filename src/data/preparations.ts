@@ -51,6 +51,7 @@ export interface Preparation {
   executor: string | null;
   executorInitials: string | null;
   station: string | null;
+  cappaId: number | null;
   date: string; // YYYY-MM-DD
   requestedAt: string;
   startedAt: string | null;
