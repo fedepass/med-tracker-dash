@@ -447,7 +447,7 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
           {lookupResults.length > 0 && (
             <div className="rounded-md border border-border bg-muted/30 divide-y divide-border overflow-hidden">
               <p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-                Seleziona un risultato per compilare automaticamente
+                Seleziona un risultato — codice ATC e categoria verranno compilati automaticamente
               </p>
               {lookupResults.map((r, i) => (
                 <button
@@ -456,15 +456,20 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
                   onClick={() => applyResult(r)}
                   className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors flex items-start justify-between gap-3"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">{r.name}</p>
-                    {r.category && <p className="text-xs text-muted-foreground">{r.category}</p>}
+                    {r.category && (
+                      <p className="text-xs text-muted-foreground truncate">{r.category}</p>
+                    )}
                   </div>
-                  {r.code && (
-                    <span className="font-mono text-[11px] bg-background border border-border px-1.5 py-0.5 rounded shrink-0">
-                      {r.code}
-                    </span>
-                  )}
+                  <div className="flex flex-col items-end gap-0.5 shrink-0">
+                    {r.code && (
+                      <span className="font-mono text-[11px] bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded">
+                        ATC: {r.code}
+                      </span>
+                    )}
+                    <span className="text-[10px] text-muted-foreground">{r.source}</span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -473,16 +478,23 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
             <p className="text-xs text-muted-foreground">{lookupError}</p>
           )}
 
-          {/* Codice */}
+          {/* Codice ATC */}
           <div className="space-y-1.5">
-            <Label htmlFor="drug-code">Codice <span className="text-muted-foreground font-normal">(ATC o interno)</span></Label>
+            <Label htmlFor="drug-code">
+              Codice ATC <span className="text-muted-foreground font-normal">(compilato automaticamente dalla ricerca)</span>
+            </Label>
             <Input
               id="drug-code"
               placeholder="Es. J01XA01"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="font-mono"
+              className={`font-mono ${code ? "border-primary/50 bg-primary/5" : ""}`}
             />
+            {code && (
+              <p className="text-[11px] text-muted-foreground">
+                Classificazione ATC: <span className="font-medium text-foreground">{code.charAt(0)} → {code.slice(0,3)} → {code.slice(0,5)} → {code}</span>
+              </p>
+            )}
           </div>
 
           {/* Categoria con suggerimenti */}
