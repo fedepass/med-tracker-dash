@@ -102,47 +102,117 @@ const STRATEGIES: { value: AssignmentStrategy; label: string; description: strin
 interface CappaDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (name: string, tipologia: Tipologia, description: string | null) => void;
-  initial?: Pick<Cappa, "name" | "tipologia" | "description">;
+  onSaved: () => void;
+  initial?: Cappa;
+  categories: string[];
   title: string;
 }
 
-function CappaDialog({ open, onClose, onSave, initial, title }: CappaDialogProps) {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [tipologia, setTipologia] = useState<Tipologia>(initial?.tipologia ?? "sterile");
+function CappaDialog({ open, onClose, onSaved, initial, categories, title }: CappaDialogProps) {
+  const [name,        setName]        = useState(initial?.name ?? "");
+  const [tipologia,   setTipologia]   = useState<Tipologia>(initial?.tipologia ?? "sterile");
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [saving,      setSaving]      = useState(false);
+
+  // Regole: esistenti (visibili) + pending eliminazione + pending aggiunta
+  const [existingRules,    setExistingRules]    = useState<DrugRule[]>(initial?.drugRules ?? []);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<number[]>([]);
+  const [pendingAdd,       setPendingAdd]       = useState<{ drugName: string | null; category: string | null; ruleType: RuleType }[]>([]);
+
+  // Form nuova regola
+  const [ruleTarget,   setRuleTarget]   = useState<"drug" | "category">("drug");
+  const [ruleType,     setRuleType]     = useState<RuleType>("excluded");
+  const [ruleDrugName, setRuleDrugName] = useState("");
+  const [ruleCat,      setRuleCat]      = useState("");
 
   useEffect(() => {
     if (open) {
       setName(initial?.name ?? "");
       setTipologia(initial?.tipologia ?? "sterile");
       setDescription(initial?.description ?? "");
+      setExistingRules(initial?.drugRules ?? []);
+      setPendingDeleteIds([]);
+      setPendingAdd([]);
+      setRuleDrugName("");
+      setRuleCat("");
     }
   }, [open, initial]);
 
+  const visibleExisting = existingRules.filter((r) => !pendingDeleteIds.includes(r.id));
+  const canAddRule = ruleTarget === "drug" ? !!ruleDrugName.trim() : !!ruleCat.trim();
+
+  const handleAddRule = () => {
+    if (!canAddRule) return;
+    setPendingAdd((prev) => [...prev, {
+      drugName: ruleTarget === "drug" ? ruleDrugName.trim() : null,
+      category: ruleTarget === "category" ? ruleCat.trim() : null,
+      ruleType,
+    }]);
+    setRuleDrugName("");
+    setRuleCat("");
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      let cappaId: number;
+      if (initial) {
+        const res = await extFetch(`/config/cappe/${initial.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name.trim(), tipologia, description: description.trim() || null, active: initial.active }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        cappaId = initial.id;
+      } else {
+        const res = await extFetch(`/config/cappe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name.trim(), tipologia, description: description.trim() || null }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        cappaId = (await res.json()).id;
+      }
+      // Elimina regole rimosse
+      await Promise.all(pendingDeleteIds.map((id) =>
+        extFetch(`/config/drug-rules/${id}`, { method: "DELETE" })
+      ));
+      // Aggiungi nuove regole
+      await Promise.all(pendingAdd.map((r) =>
+        extFetch(`/config/cappe/${cappaId}/drug-rules`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ drug_name: r.drugName, category: r.category, rule_type: r.ruleType }),
+        })
+      ));
+      toast.success(initial ? "Cappa aggiornata" : "Cappa creata");
+      onSaved();
+      onClose();
+    } catch (err: unknown) {
+      toast.error("Errore nel salvataggio", { description: String(err) });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>Configura nome, tipologia e descrizione della cappa.</DialogDescription>
+          <DialogDescription>Configura nome, tipologia, descrizione e filtri farmaci della cappa.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          {/* Dati base */}
           <div className="space-y-1.5">
             <Label htmlFor="cappa-name">Nome cappa</Label>
-            <Input
-              id="cappa-name"
-              placeholder="Es. Cappa 1, BSC-A"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Input id="cappa-name" placeholder="Es. Cappa 1, BSC-A" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="cappa-tipologia">Tipologia</Label>
             <Select value={tipologia} onValueChange={(v) => setTipologia(v as Tipologia)}>
-              <SelectTrigger id="cappa-tipologia">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger id="cappa-tipologia"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="sterile">Sterile</SelectItem>
                 <SelectItem value="biologica">Biologica</SelectItem>
@@ -158,18 +228,110 @@ function CappaDialog({ open, onClose, onSave, initial, title }: CappaDialogProps
               placeholder="Es. Cappa a flusso laminare per preparazioni sterili oncologiche..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={3}
+              rows={2}
               className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>
+
+          {/* Filtri farmaci */}
+          <div className="border-t border-border pt-4 space-y-3">
+            <Label className="text-sm font-medium">Filtri farmaci / categorie</Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              <strong>Obbligatorio</strong>: la cappa accetta SOLO queste voci. <strong>Escluso</strong>: la cappa ignora queste voci.
+            </p>
+
+            {/* Regole esistenti + pending aggiunta */}
+            {(visibleExisting.length > 0 || pendingAdd.length > 0) && (
+              <div className="space-y-1.5">
+                {visibleExisting.map((rule) => {
+                  const isCategory = !!rule.category;
+                  return (
+                    <div key={rule.id} className="flex items-center justify-between py-1.5 px-3 rounded-md bg-muted/40">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={rule.ruleType === "mandatory" ? "default" : "destructive"} className="text-[10px] px-1.5 py-0">
+                          {rule.ruleType === "mandatory" ? "Obbligatorio" : "Escluso"}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
+                          {isCategory ? "Categoria" : "Farmaco"}
+                        </Badge>
+                        <span className="text-sm">{isCategory ? rule.category : rule.drugName}</span>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => setPendingDeleteIds((prev) => [...prev, rule.id])}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  );
+                })}
+                {pendingAdd.map((r, idx) => (
+                  <div key={`new-${idx}`} className="flex items-center justify-between py-1.5 px-3 rounded-md bg-primary/5 border border-primary/20">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={r.ruleType === "mandatory" ? "default" : "destructive"} className="text-[10px] px-1.5 py-0">
+                        {r.ruleType === "mandatory" ? "Obbligatorio" : "Escluso"}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
+                        {r.category ? "Categoria" : "Farmaco"}
+                      </Badge>
+                      <span className="text-sm">{r.category ?? r.drugName}</span>
+                      <span className="text-[10px] text-primary italic">nuovo</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      onClick={() => setPendingAdd((prev) => prev.filter((_, i) => i !== idx))}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Form aggiunta */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Select value={ruleType} onValueChange={(v) => setRuleType(v as RuleType)}>
+                  <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="excluded">Escluso</SelectItem>
+                    <SelectItem value="mandatory">Obbligatorio</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={ruleTarget} onValueChange={(v) => setRuleTarget(v as "drug" | "category")}>
+                  <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="drug">Farmaco</SelectItem>
+                    <SelectItem value="category">Categoria</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                {ruleTarget === "drug" ? (
+                  <Input
+                    className="h-8 text-xs flex-1"
+                    placeholder="Nome farmaco (es. Vancomicina)..."
+                    value={ruleDrugName}
+                    onChange={(e) => setRuleDrugName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAddRule(); }}
+                  />
+                ) : (
+                  <Select value={ruleCat} onValueChange={setRuleCat}>
+                    <SelectTrigger className="h-8 text-xs flex-1">
+                      <SelectValue placeholder="Seleziona categoria..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button type="button" size="sm" variant="outline" className="h-8 px-3 shrink-0" disabled={!canAddRule} onClick={handleAddRule}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Aggiungi
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Annulla</Button>
-          <Button
-            onClick={() => onSave(name.trim(), tipologia, description.trim() || null)}
-            disabled={!name.trim()}
-          >
-            Salva
+          <Button variant="outline" onClick={onClose} disabled={saving}>Annulla</Button>
+          <Button onClick={handleSave} disabled={!name.trim() || saving}>
+            {saving ? "Salvataggio..." : "Salva"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -212,34 +374,14 @@ function CappaCard({
   onEdit,
   onDelete,
   onToggleActive,
-  onAddDrugRule,
   onDeleteDrugRule,
-  categories,
 }: {
   cappa: Cappa;
   onEdit: () => void;
   onDelete: () => void;
   onToggleActive: () => void;
-  onAddDrugRule: (drugName: string | null, category: string | null, ruleType: RuleType) => void;
   onDeleteDrugRule: (ruleId: number) => void;
-  categories: string[];
 }) {
-  const [ruleTarget, setRuleTarget] = useState<"drug" | "category">("drug");
-  const [drugName, setDrugName] = useState("");
-  const [ruleCategory, setRuleCategory] = useState("");
-  const [ruleType, setRuleType] = useState<RuleType>("excluded");
-
-  const canAdd = ruleTarget === "drug" ? !!drugName.trim() : !!ruleCategory.trim();
-  const handleAdd = () => {
-    if (!canAdd) return;
-    onAddDrugRule(
-      ruleTarget === "drug" ? drugName.trim() : null,
-      ruleTarget === "category" ? ruleCategory.trim() : null,
-      ruleType,
-    );
-    setDrugName("");
-    setRuleCategory("");
-  };
 
   const tipologiaBadge: Record<Tipologia, string> = {
     sterile:   "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
@@ -294,71 +436,13 @@ function CappaCard({
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 space-y-3">
-        {/* Regole esistenti */}
-        {cappa.drugRules.length > 0 ? (
-          <div className="space-y-1.5">
-            {cappa.drugRules.map((rule) => (
-              <DrugRuleRow key={rule.id} rule={rule} onDelete={() => onDeleteDrugRule(rule.id)} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground italic">Nessun filtro — accetta tutte le preparazioni.</p>
-        )}
-
-        {/* Form aggiunta regola */}
-        <div className="border-t border-border pt-3 space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Aggiungi filtro</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Select value={ruleType} onValueChange={(v) => setRuleType(v as RuleType)}>
-              <SelectTrigger className="h-8 w-32 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="excluded">Escluso</SelectItem>
-                <SelectItem value="mandatory">Obbligatorio</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={ruleTarget} onValueChange={(v) => setRuleTarget(v as "drug" | "category")}>
-              <SelectTrigger className="h-8 w-32 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="drug">Farmaco</SelectItem>
-                <SelectItem value="category">Categoria</SelectItem>
-              </SelectContent>
-            </Select>
-            {ruleTarget === "drug" ? (
-              <Input
-                className="h-8 text-xs flex-1 min-w-[160px]"
-                placeholder="Nome farmaco (es. Vancomicina)..."
-                value={drugName}
-                onChange={(e) => setDrugName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-              />
-            ) : (
-              <Select value={ruleCategory} onValueChange={setRuleCategory}>
-                <SelectTrigger className="h-8 text-xs flex-1 min-w-[160px]">
-                  <SelectValue placeholder="Seleziona categoria..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <Button size="sm" className="h-8 px-3" disabled={!canAdd} onClick={handleAdd}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Aggiungi
-            </Button>
-          </div>
-          {ruleType === "mandatory" && (
-            <p className="text-[11px] text-amber-600 dark:text-amber-400 italic">
-              Obbligatorio: questa cappa accetterà SOLO le preparazioni che corrispondono.
-            </p>
-          )}
-        </div>
-      </CardContent>
+      {cappa.drugRules.length > 0 && (
+        <CardContent className="pt-0 space-y-1.5">
+          {cappa.drugRules.map((rule) => (
+            <DrugRuleRow key={rule.id} rule={rule} onDelete={() => onDeleteDrugRule(rule.id)} />
+          ))}
+        </CardContent>
+      )}
     </Card>
   );
 }
@@ -791,42 +875,10 @@ export default function Config() {
 
   // ─── Cappe CRUD ───────────────────────────────────────────────────────────
 
-  const handleSaveCappa = async (name: string, tipologia: Tipologia, description: string | null) => {
-    try {
-      if (editingCappa) {
-        const res = await extFetch(`/config/cappe/${editingCappa.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, tipologia, description, active: editingCappa.active }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setCappe((prev) => prev.map((c) => c.id === editingCappa.id ? { ...c, name, tipologia, description } : c));
-        toast.success("Cappa aggiornata");
-      } else {
-        const res = await extFetch(`/config/cappe`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, tipologia, description }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const raw = await res.json();
-        const created: Cappa = {
-          id:          raw.id,
-          name:        raw.name,
-          tipologia:   raw.tipologia,
-          description: raw.description ?? null,
-          active:      raw.active ?? true,
-          drugRules:   [],
-        };
-        setCappe((prev) => [...prev, created]);
-        toast.success("Cappa creata");
-      }
-    } catch (err: unknown) {
-      toast.error("Errore nel salvataggio", { description: String(err) });
-    } finally {
-      setDialogOpen(false);
-      setEditingCappa(null);
-    }
+  const handleCappaSaved = () => {
+    fetchCappe();
+    setDialogOpen(false);
+    setEditingCappa(null);
   };
 
   const handleDeleteCappa = async (id: number) => {
@@ -1079,9 +1131,7 @@ export default function Config() {
                     onEdit={() => { setEditingCappa(cappa); setDialogOpen(true); }}
                     onDelete={() => handleDeleteCappa(cappa.id)}
                     onToggleActive={() => handleToggleActive(cappa)}
-                    onAddDrugRule={(drugName, cat, ruleType) => handleAddDrugRule(cappa.id, drugName, cat, ruleType)}
                     onDeleteDrugRule={(ruleId) => handleDeleteDrugRule(ruleId, cappa.id)}
-                    categories={categories.map((c) => c.name)}
                   />
                 ))}
               </div>
@@ -1388,8 +1438,9 @@ export default function Config() {
       <CappaDialog
         open={dialogOpen}
         onClose={() => { setDialogOpen(false); setEditingCappa(null); }}
-        onSave={handleSaveCappa}
+        onSaved={handleCappaSaved}
         initial={editingCappa ?? undefined}
+        categories={categories.map((c) => c.name)}
         title={editingCappa ? "Modifica cappa" : "Nuova cappa"}
       />
 
