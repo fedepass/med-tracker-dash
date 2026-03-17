@@ -497,20 +497,28 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
             )}
           </div>
 
-          {/* Categoria con suggerimenti */}
+          {/* Categoria con dropdown dal DB */}
           <div className="space-y-1.5 relative">
-            <Label htmlFor="drug-category">Categoria <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+            <Label htmlFor="drug-category">
+              Categoria <span className="text-muted-foreground font-normal">(seleziona o scrivi nuova)</span>
+            </Label>
             <Input
               id="drug-category"
-              placeholder="Es. Antibiotico, Chemioterapico"
+              placeholder="Cerca o inserisci nuova categoria..."
               value={category}
-              onChange={(e) => { setCategory(e.target.value); setCatSuggestions([]); }}
-              onFocus={() => setCatSuggestions(filteredCatSuggestions)}
+              onChange={(e) => { setCategory(e.target.value); setCatSuggestions(
+                categories.filter((c) => c.toLowerCase().includes(e.target.value.toLowerCase()) && c !== e.target.value)
+              ); }}
+              onFocus={() => setCatSuggestions(
+                category.trim()
+                  ? categories.filter((c) => c.toLowerCase().includes(category.toLowerCase()) && c !== category)
+                  : [...categories]
+              )}
               onBlur={() => setTimeout(() => setCatSuggestions([]), 150)}
             />
             {catSuggestions.length > 0 && (
-              <div className="absolute z-10 left-0 right-0 top-full mt-1 rounded-md border border-border bg-popover shadow-md overflow-hidden">
-                {catSuggestions.slice(0, 6).map((s) => (
+              <div className="absolute z-10 left-0 right-0 top-full mt-1 rounded-md border border-border bg-popover shadow-md overflow-hidden max-h-48 overflow-y-auto">
+                {catSuggestions.map((s) => (
                   <button
                     key={s}
                     type="button"
@@ -520,6 +528,11 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
                     {s}
                   </button>
                 ))}
+                {category.trim() && !categories.includes(category.trim()) && (
+                  <div className="px-3 py-1.5 text-xs text-muted-foreground border-t border-border bg-muted/30 italic">
+                    Nuova categoria "{category.trim()}" — verrà aggiunta al salvataggio
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -829,6 +842,8 @@ export default function Config() {
         setDrugs((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
         toast.success("Farmaco aggiunto al catalogo");
       }
+      // Refresh categories in case a new one was added
+      fetchCategories();
     } catch (err: unknown) {
       toast.error("Errore nel salvataggio", { description: String(err) });
     } finally {
