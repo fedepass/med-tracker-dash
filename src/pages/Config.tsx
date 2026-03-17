@@ -53,12 +53,14 @@ interface Drug {
   id: number;
   name: string;
   code: string | null;
+  aic_code: string | null;
   category: string | null;
   is_powder: boolean;
   diluent: string | null;
   reconstitution_volume: number | null;
   reconstitution_volume_unit: string | null;
   specific_gravity: number | null;
+  vial_volume: number | null;
   needs_review: boolean;
 }
 
@@ -480,7 +482,25 @@ function CappaCard({
 
 // ─── Drug Dialog ──────────────────────────────────────────────────────────────
 
-interface LookupResult { name: string; code: string | null; category: string | null }
+interface LookupResult { name: string; code: string | null; aic_code?: string | null; category: string | null; description?: string | null; company?: string | null; source?: string }
+
+interface AicPresentation {
+  codice_aic: string;
+  denominazione: string;
+  descrizione: string;
+  ragione_sociale: string;
+  dosaggio_valore: number | null;
+  dosaggio_unita: string | null;
+  volume_soluzione_ml: number | null;
+  concentrazione: string | null;
+  forma_farmaceutica: string | null;
+  forma_breve: string | null;
+  via_somministrazione: string | null;
+  is_polvere: boolean;
+  volume_solvente_ml: number | null;
+  quantita_confezione: number | null;
+  unita_confezione: string | null;
+}
 
 interface DrugDialogProps {
   open: boolean;
@@ -494,21 +514,26 @@ interface DrugDialogProps {
 function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugDialogProps) {
   const [name,                    setName]                    = useState(initial?.name ?? "");
   const [code,                    setCode]                    = useState(initial?.code ?? "");
+  const [aicCode,                 setAicCode]                 = useState(initial?.aic_code ?? "");
   const [category,                setCategory]                = useState(initial?.category ?? "");
   const [isPowder,                setIsPowder]                = useState(initial?.is_powder ?? false);
   const [diluent,                 setDiluent]                 = useState(initial?.diluent ?? "");
   const [reconVolume,             setReconVolume]             = useState(initial?.reconstitution_volume?.toString() ?? "");
   const [reconVolumeUnit,         setReconVolumeUnit]         = useState(initial?.reconstitution_volume_unit ?? "ml");
   const [specificGravity,         setSpecificGravity]         = useState(initial?.specific_gravity?.toString() ?? "");
+  const [vialVolume,              setVialVolume]              = useState(initial?.vial_volume?.toString() ?? "");
   const [lookupLoading,           setLookupLoading]           = useState(false);
   const [lookupResults,           setLookupResults]           = useState<LookupResult[]>([]);
   const [lookupError,             setLookupError]             = useState<string | null>(null);
   const [catMode,                 setCatMode]                 = useState<"select" | "new">("select");
+  const [aicPresentations,        setAicPresentations]        = useState<AicPresentation[]>([]);
+  const [aicPresLoading,          setAicPresLoading]          = useState(false);
 
   useEffect(() => {
     if (open) {
       setName(initial?.name ?? "");
       setCode(initial?.code ?? "");
+      setAicCode(initial?.aic_code ?? "");
       const initCat = initial?.category ?? "";
       setCategory(initCat);
       setIsPowder(initial?.is_powder ?? false);
@@ -516,11 +541,28 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
       setReconVolume(initial?.reconstitution_volume?.toString() ?? "");
       setReconVolumeUnit(initial?.reconstitution_volume_unit ?? "ml");
       setSpecificGravity(initial?.specific_gravity?.toString() ?? "");
+      setVialVolume(initial?.vial_volume?.toString() ?? "");
       setLookupResults([]);
       setLookupError(null);
+      setAicPresentations([]);
       setCatMode(initCat && !categories.includes(initCat) ? "new" : "select");
     }
   }, [open, initial]);
+
+  // Debounced AIC presentations fetch — si attiva al cambio del nome
+  useEffect(() => {
+    if (!open || name.trim().length < 3) { setAicPresentations([]); return; }
+    const timer = setTimeout(async () => {
+      setAicPresLoading(true);
+      try {
+        const res = await extFetch(`/config/drug-lookup/aic-presentations?q=${encodeURIComponent(name.trim())}`);
+        if (res.ok) setAicPresentations(await res.json());
+      } catch { /* silenzioso */ } finally {
+        setAicPresLoading(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [name, open]);
 
   const handleLookup = async () => {
     if (!name.trim()) return;
@@ -543,12 +585,24 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
   const applyResult = (r: LookupResult) => {
     setName(r.name);
     setCode(r.code ?? "");
+    if (r.aic_code) setAicCode(r.aic_code);
     const cat = r.category ?? "";
     setCategory(cat);
-    // Se la categoria rilevata non è in lista, passa a modalità inserimento
     if (cat && !categories.includes(cat)) setCatMode("new");
     else setCatMode("select");
     setLookupResults([]);
+  };
+
+  const applyPresentation = (p: AicPresentation) => {
+    setAicCode(p.codice_aic);
+    if (p.volume_soluzione_ml != null) setVialVolume(String(p.volume_soluzione_ml));
+    if (p.is_polvere) {
+      setIsPowder(true);
+      if (p.volume_solvente_ml != null) {
+        setReconVolume(String(p.volume_solvente_ml));
+        setReconVolumeUnit("ml");
+      }
+    }
   };
 
   const filteredCatSuggestions = category.trim()
@@ -559,12 +613,14 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
     onSave({
       name: name.trim(),
       code: code.trim() || null,
+      aic_code: aicCode.trim() || null,
       category: category.trim() || null,
       is_powder: isPowder,
       diluent: isPowder && diluent.trim() ? diluent.trim() : null,
       reconstitution_volume: isPowder && reconVolume ? parseFloat(reconVolume) : null,
       reconstitution_volume_unit: isPowder && reconVolume ? reconVolumeUnit : null,
       specific_gravity: specificGravity ? parseFloat(specificGravity) : null,
+      vial_volume: vialVolume ? parseFloat(vialVolume) : null,
     });
   };
 
@@ -608,7 +664,9 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
           {lookupResults.length > 0 && (
             <div className="rounded-md border border-border bg-muted/30 divide-y divide-border overflow-hidden">
               <p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-                Seleziona un risultato — codice ATC e categoria verranno compilati automaticamente
+                {lookupResults[0]?.source === "aifa"
+                  ? "Risultati AIFA BdnFarmaci — seleziona per compilare codice AIC"
+                  : "Seleziona un risultato — codice ATC e categoria verranno compilati automaticamente"}
               </p>
               {lookupResults.map((r, i) => (
                 <button
@@ -618,12 +676,23 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
                   className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors flex items-start justify-between gap-3"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">{r.name}</p>
-                    {r.category && (
-                      <p className="text-xs text-muted-foreground truncate">{r.category}</p>
+                    <p className="text-xs font-medium text-foreground">{r.name}</p>
+                    {r.description && (
+                      <p className="text-[11px] text-muted-foreground truncate">{r.description}</p>
+                    )}
+                    {!r.description && r.category && (
+                      <p className="text-[11px] text-muted-foreground truncate">{r.category}</p>
+                    )}
+                    {r.company && (
+                      <p className="text-[10px] text-muted-foreground/70 truncate">{r.company}</p>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-0.5 shrink-0">
+                    {r.aic_code && (
+                      <span className="font-mono text-[11px] bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 px-1.5 py-0.5 rounded">
+                        AIC: {r.aic_code}
+                      </span>
+                    )}
                     {r.code && (
                       <span className="font-mono text-[11px] bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded">
                         ATC: {r.code}
@@ -639,23 +708,115 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
             <p className="text-xs text-muted-foreground">{lookupError}</p>
           )}
 
-          {/* Codice ATC */}
+          {/* Codici ATC + AIC */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="drug-code">
+                Codice ATC <span className="text-muted-foreground font-normal text-[11px]">(da ricerca)</span>
+              </Label>
+              <Input
+                id="drug-code"
+                placeholder="Es. J01XA01"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className={`font-mono ${code ? "border-primary/50 bg-primary/5" : ""}`}
+              />
+              {code && (
+                <p className="text-[11px] text-muted-foreground">
+                  {code.charAt(0)} → {code.slice(0,3)} → {code.slice(0,5)} → {code}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="drug-aic">
+                Codice AIC <span className="text-muted-foreground font-normal text-[11px]">(AIFA Italia)</span>
+              </Label>
+              <Input
+                id="drug-aic"
+                placeholder="Es. 036081018"
+                value={aicCode}
+                onChange={(e) => setAicCode(e.target.value)}
+                className={`font-mono ${aicCode ? "border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20" : ""}`}
+              />
+              {aicCode && (
+                <p className="text-[11px] text-muted-foreground">
+                  Autorizzazione Immissione in Commercio
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Formati AIC disponibili — dropdown AIFA */}
+          {(aicPresentations.length > 0 || aicPresLoading) && (
+            <div className="space-y-1.5">
+              <Label>
+                Formato / Confezione AIFA
+                {aicPresLoading && <span className="ml-2 text-[11px] text-muted-foreground font-normal">Ricerca in corso...</span>}
+                {!aicPresLoading && aicPresentations.length > 0 && (
+                  <span className="ml-2 text-[11px] text-muted-foreground font-normal">
+                    {aicPresentations.length} confezioni trovate — seleziona per compilare il codice AIC
+                  </span>
+                )}
+              </Label>
+              {!aicPresLoading && aicPresentations.length > 0 && (
+                <Select
+                  value={aicCode || ""}
+                  onValueChange={(val) => {
+                    const pres = aicPresentations.find((p) => p.codice_aic === val);
+                    if (pres) applyPresentation(pres);
+                  }}
+                >
+                  <SelectTrigger className={`text-xs ${aicCode ? "border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20" : ""}`}>
+                    <SelectValue placeholder="Seleziona confezione..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-80">
+                    {aicPresentations.map((p) => (
+                      <SelectItem key={p.codice_aic} value={p.codice_aic}>
+                        <div className="flex flex-col py-0.5 gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium">{p.denominazione}</span>
+                            {p.concentrazione && (
+                              <span className="font-mono text-[10px] bg-primary/10 text-primary px-1 rounded">{p.concentrazione}</span>
+                            )}
+                            {p.is_polvere && (
+                              <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1 rounded">POLVERE</span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-muted-foreground leading-tight">{p.descrizione}</span>
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
+                            <span>{p.ragione_sociale}</span>
+                            {p.forma_breve && <span>· {p.forma_breve}</span>}
+                            {p.via_somministrazione && <span>· {p.via_somministrazione}</span>}
+                            {p.volume_solvente_ml != null && <span>· Solvente: {p.volume_solvente_ml} ml</span>}
+                            <span>· AIC {p.codice_aic}</span>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
+          {/* Volume flacone */}
           <div className="space-y-1.5">
-            <Label htmlFor="drug-code">
-              Codice ATC <span className="text-muted-foreground font-normal">(compilato automaticamente dalla ricerca)</span>
+            <Label htmlFor="drug-vial-volume">
+              Volume flacone <span className="text-muted-foreground font-normal text-[11px]">(ml, opzionale)</span>
             </Label>
             <Input
-              id="drug-code"
-              placeholder="Es. J01XA01"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className={`font-mono ${code ? "border-primary/50 bg-primary/5" : ""}`}
+              id="drug-vial-volume"
+              type="number"
+              min="0"
+              step="0.1"
+              placeholder="Es. 20"
+              value={vialVolume}
+              onChange={(e) => setVialVolume(e.target.value)}
+              className={`font-mono ${vialVolume ? "border-primary/50 bg-primary/5" : ""}`}
             />
-            {code && (
-              <p className="text-[11px] text-muted-foreground">
-                Classificazione ATC: <span className="font-medium text-foreground">{code.charAt(0)} → {code.slice(0,3)} → {code.slice(0,5)} → {code}</span>
-              </p>
-            )}
+            <p className="text-[11px] text-muted-foreground">
+              Compilato automaticamente dalla confezione AIFA — modificabile manualmente
+            </p>
           </div>
 
           {/* Categoria — Select dal DB */}
@@ -820,11 +981,13 @@ export default function Config() {
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [newCategory, setNewCategory] = useState("");
 
-  const [apiProvider, setApiProvider] = useState<"chembl" | "rxnorm" | "custom">("chembl");
+  const [apiProvider, setApiProvider] = useState<"chembl" | "rxnorm" | "aifa" | "custom">("chembl");
   const [apiBaseUrl, setApiBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [savingApi, setSavingApi] = useState(false);
   const [apiConfigOpen, setApiConfigOpen] = useState(false);
+  const [aifaStatus, setAifaStatus] = useState<{ total: number; active: number; updated_at: string | null } | null>(null);
+  const [refreshingAifa, setRefreshingAifa] = useState(false);
 
   // ─── Load data ────────────────────────────────────────────────────────────
 
@@ -868,7 +1031,7 @@ export default function Config() {
 
   const fetchDrugs = useCallback(async () => {
     try {
-      const res = await extFetch(`/drugs`);
+      const res = await extFetch(`/config/drugs`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setDrugs(await res.json());
     } catch {
@@ -896,13 +1059,36 @@ export default function Config() {
     } catch { /* silenzioso */ }
   }, []);
 
+  const fetchAifaStatus = useCallback(async () => {
+    try {
+      const res = await extFetch(`/config/drug-api/aifa-status`);
+      if (res.ok) setAifaStatus(await res.json());
+    } catch { /* silenzioso */ }
+  }, []);
+
+  const handleRefreshAifa = async () => {
+    setRefreshingAifa(true);
+    try {
+      const res = await extFetch(`/config/drug-api/refresh-aifa`, { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.detail ?? `HTTP ${res.status}`);
+      toast.success(`Dataset AIFA aggiornato: ${d.imported.toLocaleString()} farmaci importati`);
+      fetchAifaStatus();
+    } catch (err: unknown) {
+      toast.error("Aggiornamento AIFA fallito", { description: String(err) });
+    } finally {
+      setRefreshingAifa(false);
+    }
+  };
+
   useEffect(() => {
     fetchCappe();
     fetchStrategy();
     fetchDrugs();
     fetchCategories();
     fetchApiConfig();
-  }, [fetchCappe, fetchStrategy, fetchDrugs, fetchCategories, fetchApiConfig]);
+    fetchAifaStatus();
+  }, [fetchCappe, fetchStrategy, fetchDrugs, fetchCategories, fetchApiConfig, fetchAifaStatus]);
 
   // ─── Cappe CRUD ───────────────────────────────────────────────────────────
 
@@ -1032,7 +1218,8 @@ export default function Config() {
 
   const filteredDrugs = drugs.filter((d) => {
     const q = drugSearch.toLowerCase();
-    return !q || d.name.toLowerCase().includes(q) || (d.code ?? "").toLowerCase().includes(q) || (d.category ?? "").toLowerCase().includes(q);
+    return !q || d.name.toLowerCase().includes(q) || (d.code ?? "").toLowerCase().includes(q)
+      || (d.aic_code ?? "").toLowerCase().includes(q) || (d.category ?? "").toLowerCase().includes(q);
   });
 
   // ─── Categories CRUD ──────────────────────────────────────────────────────
@@ -1186,6 +1373,7 @@ export default function Config() {
                     Provider attivo: <span className="font-medium text-foreground capitalize">{apiProvider}</span>
                     {apiProvider === "chembl" && " · ChEMBL (EBI) — ATC codes, farmaci europei"}
                     {apiProvider === "rxnorm" && " · RxNorm (NLM) — farmaci USA"}
+                    {apiProvider === "aifa"   && " · AIFA BdnFarmaci — codici AIC italiani"}
                     {apiProvider === "custom" && apiBaseUrl && ` · ${apiBaseUrl}`}
                   </CardDescription>
                 )}
@@ -1195,10 +1383,11 @@ export default function Config() {
                   {/* Provider selector */}
                   <div className="space-y-2">
                     <Label className="text-xs">Provider</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                       {([
                         { value: "chembl", label: "ChEMBL (EBI)", desc: "Codici ATC, farmaci europei — gratuito", url: "https://www.ebi.ac.uk/chembl/" },
                         { value: "rxnorm", label: "RxNorm (NLM)", desc: "Database FDA USA — gratuito", url: "https://rxnav.nlm.nih.gov/" },
+                        { value: "aifa",   label: "AIFA BdnFarmaci", desc: "Banca Dati Nazionale Farmaci — codici AIC italiani", url: "https://farmaci.agenziafarmaco.gov.it/" },
                         { value: "custom", label: "Custom URL", desc: "API proprietaria o interna", url: null },
                       ] as const).map(({ value, label, desc, url }) => (
                         <button
@@ -1228,6 +1417,28 @@ export default function Config() {
                     </div>
                   </div>
 
+                  {apiProvider === "aifa" && aifaStatus && (
+                    <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-3 space-y-1">
+                      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Dataset locale AIFA BdnFarmaci</p>
+                      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                        <span>Totale: <span className="font-medium text-foreground">{aifaStatus.total.toLocaleString()}</span> farmaci</span>
+                        <span>Attivi (AIC): <span className="font-medium text-foreground">{aifaStatus.active.toLocaleString()}</span></span>
+                        <span>
+                          Ultimo aggiornamento:{" "}
+                          <span className="font-medium text-foreground">
+                            {aifaStatus.updated_at
+                              ? new Date(aifaStatus.updated_at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })
+                              : "—"}
+                          </span>
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Aggiornamento automatico ogni giorno a mezzanotte · fonte:{" "}
+                        <span className="font-mono">drive.aifa.gov.it</span>
+                      </p>
+                    </div>
+                  )}
+
                   {apiProvider === "custom" && (
                     <div className="space-y-3">
                       <div className="space-y-1.5">
@@ -1253,9 +1464,22 @@ export default function Config() {
                     </div>
                   )}
 
-                  <Button size="sm" onClick={handleSaveApiConfig} disabled={savingApi}>
-                    {savingApi ? "Salvataggio..." : "Salva configurazione API"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={handleSaveApiConfig} disabled={savingApi}>
+                      {savingApi ? "Salvataggio..." : "Salva configurazione API"}
+                    </Button>
+                    {apiProvider === "aifa" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRefreshAifa}
+                        disabled={refreshingAifa}
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshingAifa ? "animate-spin" : ""}`} />
+                        {refreshingAifa ? "Aggiornamento..." : "Aggiorna dataset AIFA"}
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               )}
             </Card>
@@ -1302,11 +1526,13 @@ export default function Config() {
                     <thead>
                       <tr className="border-b border-border bg-muted/40">
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Nome</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Codice</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Codice ATC</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Codice AIC</th>
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Categoria</th>
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Polvere</th>
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Ricostituzione</th>
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Peso spec.</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Vol. flacone</th>
                         <th className="px-4 py-2.5 w-20" />
                       </tr>
                     </thead>
@@ -1329,6 +1555,11 @@ export default function Config() {
                               : <span className="text-muted-foreground">—</span>}
                           </td>
                           <td className="px-4 py-3">
+                            {drug.aic_code
+                              ? <span className="font-mono text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 px-1.5 py-0.5 rounded">{drug.aic_code}</span>
+                              : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-4 py-3">
                             {drug.category
                               ? <Badge variant="secondary" className="text-[11px] font-normal">{drug.category}</Badge>
                               : <span className="text-muted-foreground">—</span>}
@@ -1345,6 +1576,9 @@ export default function Config() {
                           </td>
                           <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
                             {drug.specific_gravity ?? <span>—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
+                            {drug.vial_volume != null ? <span>{drug.vial_volume} ml</span> : <span>—</span>}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1">

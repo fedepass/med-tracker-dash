@@ -1,73 +1,83 @@
-# Welcome to your Lovable project
+# PharmAR Dashboard
 
-## Project info
+Dashboard web per la gestione delle preparazioni farmaceutiche oncologiche in ambiente ospedaliero.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- **React 18** + **TypeScript**
+- **Vite** (build tool)
+- **Tailwind CSS** + **shadcn/ui** (componenti)
+- **Sonner** (toast notifications)
+- **Recharts** (grafici statistiche)
 
-There are several ways of editing your application.
+## Prerequisiti
 
-**Use Lovable**
+- Node.js ≥ 18
+- API REST `pharmar-api` in esecuzione (default: `https://ip87-106-10-111.pbiaas.com`)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Avvio in sviluppo
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Variabili d'ambiente
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Crea un file `.env.local` nella root:
 
-**Use GitHub Codespaces**
+```env
+VITE_API_BASE_URL=https://ip87-106-10-111.pbiaas.com/api/v1
+VITE_API_KEY=<chiave_readonly_o_admin>
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Build produzione
 
-## What technologies are used for this project?
+```sh
+npm run build
+# output in ./dist — da servire su nginx porta :8443
+```
 
-This project is built with:
+## Struttura principale
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+src/
+├── pages/
+│   ├── Index.tsx          — Dashboard principale (lista preparazioni)
+│   ├── Config.tsx         — Configurazione cappe, farmaci, strategia
+│   ├── PreparationDetail.tsx — Dettaglio preparazione + sessione IVEyes
+│   └── Stats.tsx          — Statistiche e KPI
+├── components/
+│   └── dashboard/
+│       ├── PreparationsTable.tsx
+│       ├── FiltersBar.tsx
+│       └── ...
+└── lib/
+    └── apiClient.ts       — Wrapper fetch con base URL e auth header
+```
 
-## How can I deploy this project?
+## Funzionalità principali
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+### Pagina principale
+- Lista preparazioni con filtri (status, priorità, data, farmaco, cappa)
+- Ordinamento multi-colonna
+- Indicatore errore % con soglie cromatiche
+- Colonna "Dosato" con conversione gravimetrica (g → ml usando peso specifico)
 
-## Can I connect a custom domain to my Lovable project?
+### Configurazione farmaci (`/config`)
+- Catalogo farmaci con ricerca AIFA (BdnFarmaci open data)
+- Lookup automatico codice ATC, AIC, categoria, volume flacone
+- Selezione confezione AIFA con auto-compilazione campi tecnici
+- Gestione cappe con regole di esclusione/obbligo per farmaco o categoria
 
-Yes, you can!
+### Dettaglio preparazione
+- Timeline allestimento con foto fasi
+- Sessione gravimetrica IVEyes (tara, post-dose, verdict)
+- Dosi supplementari
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Note API
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Il frontend usa due endpoint distinti per i farmaci:
+- `GET /config/drugs` — gestione catalogo (include tutti i campi: `aic_code`, `vial_volume`, `needs_review`)
+- `GET /drugs` — lettura da altri componenti (stesso set di campi dal v2.5.0)
+- `PUT /config/drugs/:id` — aggiornamento; i campi non inviati non vengono modificati (null esplicito li azzera)
