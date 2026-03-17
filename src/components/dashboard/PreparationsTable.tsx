@@ -261,7 +261,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                 <span className="inline-flex items-center gap-1">Richiesta <SortIcon col="drug" /></span>
               </th>
               <th className={thClass} onClick={() => toggleSort("dispensed")}>
-                <span className="inline-flex items-center gap-1">Quantità <SortIcon col="dispensed" /></span>
+                <span className="inline-flex items-center gap-1">Contenitore <SortIcon col="dispensed" /></span>
               </th>
               <th className={thClass} onClick={() => toggleSort("errorRate")}>
                 <span className="inline-flex items-center gap-1">Errore % <SortIcon col="errorRate" /></span>
@@ -309,31 +309,21 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                   </td>
                   <td className="px-4 py-4">
                     <p className="font-medium text-foreground">{p.drug}</p>
-                    {p.labelData.volume && <p className="text-xs text-muted-foreground mt-0.5">{p.labelData.volume}</p>}
+                    {p.labelData.dosage && (
+                      <p className="text-xs text-muted-foreground mt-0.5">{p.labelData.dosage}</p>
+                    )}
                   </td>
                   <td className="px-4 py-4">
-                    {p.labelData.dosage && (
-                      <p className="mb-1 text-sm font-medium text-foreground">{p.labelData.dosage}</p>
-                    )}
-                    {p.status === "attesa" ? (
-                      <p className="mb-1 text-xs text-muted-foreground">{p.volumeValue != null ? `${p.volumeValue} ml` : "—"}</p>
-                    ) : p.dispensed > 0 ? (
-                      <>
-                        <p className="mb-1 text-xs text-muted-foreground">
-                          {p.dispensed}{p.volumeValue != null ? ` / ${p.volumeValue}` : ""} ml
-                        </p>
-                        {p.volumeValue != null && (
-                          <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className={`h-full rounded-full transition-all ${progressColor(p.status, p.errorRate)}`}
-                              style={{ width: `${progressPercent(p.dispensed, p.volumeValue)}%` }}
-                            />
-                          </div>
-                        )}
-                      </>
+                    {p.labelData.solvent ? (
+                      <p className="text-sm font-medium text-foreground">{p.labelData.solvent}</p>
                     ) : (
-                      <p className="mb-1 text-xs text-muted-foreground italic">N/D</p>
+                      <p className="text-sm text-muted-foreground italic">—</p>
                     )}
+                    {p.labelData.volume ? (
+                      <p className="text-xs text-muted-foreground mt-0.5">{p.labelData.volume}</p>
+                    ) : p.volumeValue != null ? (
+                      <p className="text-xs text-muted-foreground mt-0.5">{p.volumeValue} ml</p>
+                    ) : null}
                   </td>
                   <td className="px-4 py-4">
                     {p.errorRate > 0 ? (

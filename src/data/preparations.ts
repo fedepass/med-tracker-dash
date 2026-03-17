@@ -30,6 +30,7 @@ export interface LabelData {
   dosage: string;
   route: string;
   volume: string;
+  solvent: string;
   preparedBy: string;
   preparedAt: string;
   expiresAt: string;

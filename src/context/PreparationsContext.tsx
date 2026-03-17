@@ -54,6 +54,7 @@ function mapPreparation(r: any): Preparation {
       dosage:      r.dosage        ?? label.dosage       ?? "",
       route:       r.route         ?? label.route        ?? "",
       volume:      r.volume        ?? label.volume       ?? "",
+      solvent:     r.solvent       ?? label.solvent      ?? "",
       preparedBy:  label.prepared_by  ?? label.preparedBy  ?? "",
       preparedAt:  label.prepared_at  ?? label.preparedAt  ?? "",
       expiresAt:   label.expires_at   ?? label.expiresAt   ?? "",
