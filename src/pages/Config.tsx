@@ -348,13 +348,14 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
   const [lookupLoading,           setLookupLoading]           = useState(false);
   const [lookupResults,           setLookupResults]           = useState<LookupResult[]>([]);
   const [lookupError,             setLookupError]             = useState<string | null>(null);
-  const [catSuggestions,          setCatSuggestions]          = useState<string[]>([]);
+  const [catMode,                 setCatMode]                 = useState<"select" | "new">("select");
 
   useEffect(() => {
     if (open) {
       setName(initial?.name ?? "");
       setCode(initial?.code ?? "");
-      setCategory(initial?.category ?? "");
+      const initCat = initial?.category ?? "";
+      setCategory(initCat);
       setIsPowder(initial?.is_powder ?? false);
       setDiluent(initial?.diluent ?? "");
       setReconVolume(initial?.reconstitution_volume?.toString() ?? "");
@@ -362,6 +363,7 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
       setSpecificGravity(initial?.specific_gravity?.toString() ?? "");
       setLookupResults([]);
       setLookupError(null);
+      setCatMode(initCat && !categories.includes(initCat) ? "new" : "select");
     }
   }, [open, initial]);
 
@@ -386,7 +388,11 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
   const applyResult = (r: LookupResult) => {
     setName(r.name);
     setCode(r.code ?? "");
-    setCategory(r.category ?? "");
+    const cat = r.category ?? "";
+    setCategory(cat);
+    // Se la categoria rilevata non è in lista, passa a modalità inserimento
+    if (cat && !categories.includes(cat)) setCatMode("new");
+    else setCatMode("select");
     setLookupResults([]);
   };
 
@@ -497,43 +503,63 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
             )}
           </div>
 
-          {/* Categoria con dropdown dal DB */}
-          <div className="space-y-1.5 relative">
-            <Label htmlFor="drug-category">
-              Categoria <span className="text-muted-foreground font-normal">(seleziona o scrivi nuova)</span>
-            </Label>
-            <Input
-              id="drug-category"
-              placeholder="Cerca o inserisci nuova categoria..."
-              value={category}
-              onChange={(e) => { setCategory(e.target.value); setCatSuggestions(
-                categories.filter((c) => c.toLowerCase().includes(e.target.value.toLowerCase()) && c !== e.target.value)
-              ); }}
-              onFocus={() => setCatSuggestions(
-                category.trim()
-                  ? categories.filter((c) => c.toLowerCase().includes(category.toLowerCase()) && c !== category)
-                  : [...categories]
-              )}
-              onBlur={() => setTimeout(() => setCatSuggestions([]), 150)}
-            />
-            {catSuggestions.length > 0 && (
-              <div className="absolute z-10 left-0 right-0 top-full mt-1 rounded-md border border-border bg-popover shadow-md overflow-hidden max-h-48 overflow-y-auto">
-                {catSuggestions.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onMouseDown={() => { setCategory(s); setCatSuggestions([]); }}
-                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted transition-colors"
-                  >
-                    {s}
-                  </button>
-                ))}
-                {category.trim() && !categories.includes(category.trim()) && (
-                  <div className="px-3 py-1.5 text-xs text-muted-foreground border-t border-border bg-muted/30 italic">
-                    Nuova categoria "{category.trim()}" — verrà aggiunta al salvataggio
-                  </div>
-                )}
+          {/* Categoria — Select dal DB */}
+          <div className="space-y-1.5">
+            <Label>Categoria</Label>
+            {catMode === "select" ? (
+              <div className="flex gap-2">
+                <Select
+                  value={categories.includes(category) ? category : ""}
+                  onValueChange={(val) => setCategory(val)}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Seleziona categoria..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 text-xs"
+                  onClick={() => { setCategory(""); setCatMode("new"); }}
+                >
+                  + Nuova
+                </Button>
               </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  placeholder="Inserisci nuova categoria..."
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 text-xs"
+                  onClick={() => { setCategory(""); setCatMode("select"); }}
+                >
+                  Annulla
+                </Button>
+              </div>
+            )}
+            {catMode === "new" && category.trim() && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 italic">
+                La categoria "{category.trim()}" verrà aggiunta al salvataggio.
+              </p>
+            )}
+            {catMode === "select" && category && !categories.includes(category) && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 italic">
+                Categoria rilevata automaticamente: "{category}" — verrà aggiunta al salvataggio.
+              </p>
             )}
           </div>
 
