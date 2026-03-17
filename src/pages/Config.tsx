@@ -214,6 +214,7 @@ function CappaCard({
   onToggleActive,
   onAddDrugRule,
   onDeleteDrugRule,
+  categories,
 }: {
   cappa: Cappa;
   onEdit: () => void;
