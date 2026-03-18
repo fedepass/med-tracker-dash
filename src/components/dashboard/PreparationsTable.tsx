@@ -153,7 +153,8 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
     Math.min((dispensed / target) * 100, 100);
 
   const progressColor = (status: Status, errorRate: number) => {
-    if (errorRate > 2) return "bg-status-error";
+    if (errorRate > 10) return "bg-status-error";
+    if (errorRate > 5) return "bg-amber-500";
     if (status === "completata") return "bg-status-complete";
     if (status === "esecuzione") return "bg-status-waiting";
     return "bg-muted-foreground";
@@ -255,6 +256,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
               <th className={thClass} onClick={() => toggleSort("status")}>
                 <span className="inline-flex items-center gap-1">ID / Stato <SortIcon col="status" /></span>
               </th>
+              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Validazione</th>
               <th className={thClass} onClick={() => toggleSort("priority")}>
                 <span className="inline-flex items-center gap-1">Priorità <SortIcon col="priority" /></span>
               </th>
@@ -263,6 +265,9 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
               </th>
               <th className={thClass} onClick={() => toggleSort("dispensed")}>
                 <span className="inline-flex items-center gap-1">Contenitore <SortIcon col="dispensed" /></span>
+              </th>
+              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Dosato
               </th>
               <th className={thClass} onClick={() => toggleSort("errorRate")}>
                 <span className="inline-flex items-center gap-1">Errore % <SortIcon col="errorRate" /></span>
@@ -273,7 +278,6 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
               <th className={thClass} onClick={() => toggleSort("requestedAt")}>
                 <span className="inline-flex items-center gap-1">Tempistiche <SortIcon col="requestedAt" /></span>
               </th>
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider">Validazione</th>
               {mode === "archived" && (
                 <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider">Motivo</th>
               )}
@@ -304,6 +308,16 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                     </div>
                   </td>
                   <td className="px-4 py-4">
+                    {p.validationStatus ? (
+                      <div className={`flex items-center gap-1 text-xs ${validationConfig[p.validationStatus].className}`}>
+                        {validationConfig[p.validationStatus].icon}
+                        {validationConfig[p.validationStatus].label}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4">
                     <Badge variant="outline" className={`border-0 text-[10px] font-medium ${pc.className}`}>
                       {pc.label}
                     </Badge>
@@ -327,8 +341,50 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                     ) : null}
                   </td>
                   <td className="px-4 py-4">
+                    {p.dispensed > 0 ? (() => {
+                      const sg = p.specificGravity;
+                      const unit = p.dosageUnit?.toLowerCase() ?? "";
+                      let displayValue: string;
+                      let displayUnit: string;
+                      if (sg != null && unit && !["ml", "l"].includes(unit)) {
+                        const grams = p.dispensed * sg;
+                        if (unit === "mcg" || unit === "μg") {
+                          displayValue = (grams * 1_000_000).toFixed(0);
+                          displayUnit = "mcg";
+                        } else if (unit === "mg") {
+                          displayValue = (grams * 1_000).toFixed(1);
+                          displayUnit = "mg";
+                        } else {
+                          displayValue = grams.toFixed(3);
+                          displayUnit = "g";
+                        }
+                      } else {
+                        displayValue = p.dispensed.toFixed(2);
+                        displayUnit = p.dosageUnit ?? "ml";
+                      }
+                      return (
+                        <>
+                          <p className="text-sm font-medium text-foreground">
+                            {displayValue} {displayUnit}
+                          </p>
+                          {p.dosageValue != null && p.dosageUnit && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              richiesti {p.dosageValue} {p.dosageUnit}
+                            </p>
+                          )}
+                        </>
+                      );
+                    })() : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4">
                     {p.errorRate > 0 ? (
-                      <span className={`font-semibold ${p.errorRate > 2 ? "text-status-error" : "text-status-progress"}`}>
+                      <span className={`font-semibold ${
+                        p.errorRate <= 5 ? "text-green-600" :
+                        p.errorRate <= 10 ? "text-amber-500" :
+                        "text-status-error"
+                      }`}>
                         {p.errorRate}%
                       </span>
                     ) : (
@@ -336,7 +392,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                     )}
                   </td>
                   <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                    {mode === "active" && cappe.length > 0 ? (
+                    {mode === "active" && p.status === "attesa" && cappe.length > 0 ? (
                       <Select
                         value={p.cappaId != null ? String(p.cappaId) : "__none__"}
                         onValueChange={(val) => {
@@ -385,16 +441,6 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                         <p className="text-status-progress font-medium">In corso...</p>
                       )}
                     </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    {p.validationStatus ? (
-                      <div className={`flex items-center gap-1 text-xs ${validationConfig[p.validationStatus].className}`}>
-                        {validationConfig[p.validationStatus].icon}
-                        {validationConfig[p.validationStatus].label}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
                   </td>
                   {mode === "archived" && (
                     <td className="px-4 py-4">

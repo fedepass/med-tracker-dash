@@ -36,6 +36,9 @@ function mapPreparation(r: any): Preparation {
     dispensed:        Number(r.dispensed),
     volumeValue:      r.volume_value != null ? Number(r.volume_value) : null,
     errorRate:        Number(r.error_rate ?? r.errorRate ?? 0),
+    dosageValue:      r.dosage_value    != null ? Number(r.dosage_value)    : null,
+    dosageUnit:       r.dosage_unit     ?? null,
+    specificGravity:  r.specific_gravity != null ? Number(r.specific_gravity) : null,
     date:             String(r.date).slice(0, 10),
     requestedAt:      r.requested_at != null ? String(r.requested_at).slice(0, 5) : (r.requestedAt ?? null),
     startedAt:        r.started_at  != null ? String(r.started_at).slice(0,  5)  : (r.startedAt  ?? null),
@@ -83,10 +86,10 @@ async function fetchPreparationsFromAPI(): Promise<Preparation[]> {
 interface PreparationsContextType {
   preparations: Preparation[];
   refreshPreparations: () => Promise<void>;
-  validatePreparation: (id: string) => void;
-  rejectPreparation: (id: string, reason: RejectionReason) => void;
+  validatePreparation: (id: string) => Promise<void>;
+  rejectPreparation: (id: string, reason: RejectionReason) => Promise<void>;
   getRejectionReason: (id: string) => RejectionReason | undefined;
-  undoPreparation: (id: string) => void;
+  undoPreparation: (id: string) => Promise<void>;
   reassignCappa: (prepId: string, cappaId: number | null, cappaName: string | null) => void;
   cappe: { id: number; name: string }[];
   barcodeMode: "detail" | "select";
@@ -165,24 +168,39 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
     setBarcodeSelectedIds([]);
   }, []);
 
-  const validatePreparation = useCallback((id: string) => {
+  const validatePreparation = useCallback(async (id: string) => {
     setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: "validata" as const } : p)));
-    extFetch(`/preparations/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ validation_status: "validata" }),
-    }).catch(() => {});
-  }, []);
+    try {
+      const res = await extFetch(`/preparations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ validation_status: "validata" }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await refreshPreparations();
+    } catch {
+      // Revert optimistic update on failure
+      setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: null } : p)));
+    }
+  }, [refreshPreparations]);
 
-  const rejectPreparation = useCallback((id: string, reason: RejectionReason) => {
+  const rejectPreparation = useCallback(async (id: string, reason: RejectionReason) => {
     setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: "rifiutata" as const } : p)));
     setRejectionMap((prev) => ({ ...prev, [id]: reason }));
-    extFetch(`/preparations/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ validation_status: "rifiutata", rejection_reason: reason }),
-    }).catch(() => {});
-  }, []);
+    try {
+      const res = await extFetch(`/preparations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ validation_status: "rifiutata", rejection_reason: reason }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await refreshPreparations();
+    } catch {
+      // Revert optimistic update on failure
+      setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: null } : p)));
+      setRejectionMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    }
+  }, [refreshPreparations]);
 
   const getRejectionReason = useCallback(
     (id: string) => rejectionMap[id],
@@ -198,15 +216,26 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
     }).catch(() => {});
   }, []);
 
-  const undoPreparation = useCallback((id: string) => {
+  const undoPreparation = useCallback(async (id: string) => {
+    const prev_prep = preps.find((p) => p.id === id);
     setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: null } : p)));
     setRejectionMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
-    extFetch(`/preparations/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ validation_status: null, rejection_reason: null }),
-    }).catch(() => {});
-  }, []);
+    try {
+      const res = await extFetch(`/preparations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ validation_status: null, rejection_reason: null }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await refreshPreparations();
+    } catch {
+      // Revert optimistic update on failure
+      if (prev_prep) {
+        setPreps((prev) => prev.map((p) => (p.id === id ? prev_prep : p)));
+        if (prev_prep.rejectionReason) setRejectionMap((prev) => ({ ...prev, [id]: prev_prep.rejectionReason as RejectionReason }));
+      }
+    }
+  }, [refreshPreparations, preps]);
 
   return (
     <PreparationsContext.Provider value={{
