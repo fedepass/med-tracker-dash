@@ -74,12 +74,6 @@ function mapPreparation(r: any): Preparation {
       notes:       r.notes         ?? label.notes        ?? "",
     },
     photos: (r.photos ?? []).map(resolvePhoto),
-    supplementaryDoses: (r.supplementary_doses ?? r.supplementaryDoses ?? []).map((d: any) => ({
-      time:   String(d.dose_time ?? d.time ?? "").slice(0, 5),
-      amount: Number(d.amount),
-      unit:   d.unit   ?? "",
-      reason: d.reason ?? "",
-    })),
   } as Preparation;
 }
 

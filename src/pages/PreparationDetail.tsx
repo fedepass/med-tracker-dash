@@ -13,7 +13,7 @@ import RejectDialog from "@/components/dashboard/RejectDialog";
 import {
   ArrowLeft, CheckCircle2, Loader, AlertTriangle, Clock,
   Check, X, Printer, Camera, ScanBarcode, Beaker, FlaskConical,
-  Package, Timer, Droplets, ArrowRight, ShieldCheck, ShieldX, RotateCcw, History,
+  Package, Timer, ArrowRight, ShieldCheck, ShieldX, RotateCcw, History,
 } from "lucide-react";
 
 const statusConfig: Record<Status, { icon: React.ReactNode; label: string; className: string; bgClassName: string }> = {
@@ -64,7 +64,7 @@ const PreparationDetail = () => {
       .catch(() => {});
   }, [id]);
 
-  // Fetch completo dalla API per avere photos e supplementaryDoses
+  // Fetch completo dalla API per avere photos e dati etichetta
   useEffect(() => {
     if (!id) return;
     extFetch(`/preparations/${id}`)
@@ -111,12 +111,6 @@ const PreparationDetail = () => {
             label:   ph.label,
             url:     photoAssets[ph.assetKey as keyof typeof photoAssets] ?? ph.url ?? "",
             barcode: ph.barcode ?? null,
-          })),
-          supplementaryDoses: (data.supplementary_doses ?? data.supplementaryDoses ?? []).map((d: any) => ({
-            time:   String(d.dose_time ?? d.time ?? "").slice(0, 5),
-            amount: Number(d.amount),
-            unit:   d.unit   ?? "",
-            reason: d.reason ?? "",
           })),
         } as Preparation);
       })
@@ -261,32 +255,6 @@ const PreparationDetail = () => {
               )}
             </section>
 
-            {/* Supplementary doses */}
-            <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
-                <Droplets className="h-5 w-5 text-primary" /> Dosaggi Supplementari
-              </h2>
-              {prep.supplementaryDoses.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground italic">Nessun dosaggio supplementare registrato.</p>
-              ) : (
-                <div className="space-y-3">
-                  {prep.supplementaryDoses.map((dose, i) => (
-                    <div key={i} className="flex items-start gap-3 rounded-lg border border-border bg-secondary/30 p-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-progress-bg text-status-progress">
-                        <Droplets className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-foreground">+{dose.amount} {dose.unit}</span>
-                          <span className="text-xs text-muted-foreground">ore {dose.time}</span>
-                        </div>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{dose.reason}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
           </div>
 
           {/* Right column: Info */}
@@ -357,21 +325,6 @@ const PreparationDetail = () => {
                     {prep.errorRate > 0 ? `${prep.errorRate}%` : "—"}
                   </span>
                 </div>
-                {prep.supplementaryDoses.length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Dosi supplementari</span>
-                      <span className="font-medium text-foreground">{prep.supplementaryDoses.length}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Tot. supplementare</span>
-                      <span className="font-medium text-foreground">
-                        +{prep.supplementaryDoses.reduce((s, d) => s + d.amount, 0).toFixed(1)} ml
-                      </span>
-                    </div>
-                  </>
-                )}
               </div>
             </section>
 

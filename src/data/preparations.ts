@@ -16,13 +16,6 @@ export interface ComponentPhoto {
   barcode?: string;
 }
 
-export interface SupplementaryDose {
-  time: string;
-  amount: number;
-  unit: string;
-  reason: string;
-}
-
 export interface LabelData {
   patientName: string;
   patientId: string;
@@ -60,7 +53,6 @@ export interface Preparation {
   startedAt: string | null;
   finishedAt: string | null;
   photos: ComponentPhoto[];
-  supplementaryDoses: SupplementaryDose[];
   labelData: LabelData;
 }
 
@@ -115,9 +107,6 @@ export const preparations: Preparation[] = [
     startedAt: "08:45",
     finishedAt: "09:12",
     photos: ivPhotos("Ceftriaxone 2g", "Soluzione Fisiologica NaCl 0.9% 100ml", "8012345678901"),
-    supplementaryDoses: [
-      { time: "08:55", amount: 0.5, unit: "ml", reason: "Compensazione volume residuo nel flacone" },
-    ],
     labelData: {
       patientName: "Mario Rossi",
       patientId: "PAZ-20240315-001",
@@ -150,7 +139,6 @@ export const preparations: Preparation[] = [
     startedAt: "09:30",
     finishedAt: null,
     photos: syringePhotos("Vancomicina 1g", "Acqua per preparazioni iniettabili 20ml", "8011122233344").slice(0, 2),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Anna Verdi",
       patientId: "PAZ-20240315-002",
@@ -183,10 +171,6 @@ export const preparations: Preparation[] = [
     startedAt: "08:20",
     finishedAt: "08:45",
     photos: ivPhotos("Meropenem 1g", "Soluzione Fisiologica NaCl 0.9% 50ml", "8055566677788"),
-    supplementaryDoses: [
-      { time: "08:30", amount: 2.0, unit: "ml", reason: "Errore: volume eccessivo ricostituito - superamento soglia" },
-      { time: "08:38", amount: 1.8, unit: "ml", reason: "Tentativo correzione dosaggio - non riuscito" },
-    ],
     labelData: {
       patientName: "Luigi Bianchi",
       patientId: "PAZ-20240315-003",
@@ -219,7 +203,6 @@ export const preparations: Preparation[] = [
     startedAt: null,
     finishedAt: null,
     photos: [],
-    supplementaryDoses: [],
     labelData: {
       patientName: "Francesca Neri",
       patientId: "PAZ-20240315-004",
@@ -252,7 +235,6 @@ export const preparations: Preparation[] = [
     startedAt: "08:00",
     finishedAt: "08:28",
     photos: ivPhotos("Piperacillina/Tazobactam 4.5g", "Soluzione Fisiologica NaCl 0.9% 100ml", "8033344455566"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Giuseppe Esposito",
       patientId: "PAZ-20240315-005",
@@ -285,7 +267,6 @@ export const preparations: Preparation[] = [
     startedAt: "07:40",
     finishedAt: "07:55",
     photos: syringePhotos("Ampicillina 1g", "Acqua per preparazioni iniettabili 20ml", "8044455566677"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Clara Moretti",
       patientId: "PAZ-20240315-006",
@@ -318,7 +299,6 @@ export const preparations: Preparation[] = [
     startedAt: "09:15",
     finishedAt: null,
     photos: ivPhotos("Amoxicillina/Ac. Clavulanico 2.2g", "Soluzione Fisiologica NaCl 0.9% 100ml", "8066677788899").slice(0, 2),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Roberto Colombo",
       patientId: "PAZ-20240315-007",
@@ -351,7 +331,6 @@ export const preparations: Preparation[] = [
     startedAt: null,
     finishedAt: null,
     photos: [],
-    supplementaryDoses: [],
     labelData: {
       patientName: "Elena Ricci",
       patientId: "PAZ-20240315-008",
@@ -384,7 +363,6 @@ export const preparations: Preparation[] = [
     startedAt: "08:20",
     finishedAt: "08:30",
     photos: syringePhotos("Desametasone 8mg", "NaCl 0.9% 3ml", "8077788899900"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Marco Fontana",
       patientId: "PAZ-20240315-009",
@@ -417,9 +395,6 @@ export const preparations: Preparation[] = [
     startedAt: "09:00",
     finishedAt: "09:25",
     photos: ivPhotos("Teicoplanina 400mg", "Acqua per preparazioni iniettabili 3ml + NaCl 0.9% 100ml", "8088899900011"),
-    supplementaryDoses: [
-      { time: "09:10", amount: 3.0, unit: "ml", reason: "Volume ricostituzione eccessivo - contaminazione" },
-    ],
     labelData: {
       patientName: "Silvia Greco",
       patientId: "PAZ-20240315-010",
@@ -454,7 +429,6 @@ export const preparations: Preparation[] = [
     startedAt: "07:45",
     finishedAt: "08:10",
     photos: ivPhotos("Meropenem 2g", "Soluzione Fisiologica NaCl 0.9% 100ml", "8091234567890"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Mario Rossi",
       patientId: "PAZ-20240315-001",
@@ -487,9 +461,6 @@ export const preparations: Preparation[] = [
     startedAt: "08:10",
     finishedAt: "08:22",
     photos: syringePhotos("Morfina Solfato 10mg", "NaCl 0.9% 9ml", "8092345678901"),
-    supplementaryDoses: [
-      { time: "08:18", amount: 2.5, unit: "ml", reason: "Sovradosaggio rilevato durante verifica" },
-    ],
     labelData: {
       patientName: "Anna Verdi",
       patientId: "PAZ-20240315-002",
@@ -522,7 +493,6 @@ export const preparations: Preparation[] = [
     startedAt: "09:10",
     finishedAt: "09:30",
     photos: ivPhotos("Fluconazolo 200mg", "Glucosio 5% 100ml", "8093456789012"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Luigi Bianchi",
       patientId: "PAZ-20240315-003",
@@ -555,7 +525,6 @@ export const preparations: Preparation[] = [
     startedAt: "10:20",
     finishedAt: "10:30",
     photos: syringePhotos("Furosemide 40mg", "NaCl 0.9% 2ml", "8094567890123"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Francesca Neri",
       patientId: "PAZ-20240315-004",
@@ -590,7 +559,6 @@ export const preparations: Preparation[] = [
     startedAt: "07:15",
     finishedAt: "07:45",
     photos: ivPhotos("Vancomicina 1g", "Soluzione Fisiologica NaCl 0.9% 250ml", "8095678901234"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Giuseppe Esposito",
       patientId: "PAZ-20240315-005",
@@ -623,7 +591,6 @@ export const preparations: Preparation[] = [
     startedAt: "08:45",
     finishedAt: "09:05",
     photos: ivPhotos("Ciprofloxacina 400mg", "Glucosio 5% 200ml", "8096789012345"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Clara Moretti",
       patientId: "PAZ-20240315-006",
@@ -656,7 +623,6 @@ export const preparations: Preparation[] = [
     startedAt: "07:00",
     finishedAt: "07:20",
     photos: syringePhotos("Insulina Regolare 50UI", "NaCl 0.9% 50ml", "8097890123456"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Roberto Colombo",
       patientId: "PAZ-20240315-007",
@@ -691,7 +657,6 @@ export const preparations: Preparation[] = [
     startedAt: "08:15",
     finishedAt: "08:42",
     photos: ivPhotos("Ceftriaxone 2g", "Soluzione Fisiologica NaCl 0.9% 100ml", "8098901234567"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Elena Ricci",
       patientId: "PAZ-20240315-008",
@@ -724,9 +689,6 @@ export const preparations: Preparation[] = [
     startedAt: "09:45",
     finishedAt: "10:05",
     photos: ivPhotos("Metronidazolo 500mg", "Soluzione pronta 100ml", "8099012345678"),
-    supplementaryDoses: [
-      { time: "09:58", amount: 7.0, unit: "ml", reason: "Errore misura volume — eccesso rilevato" },
-    ],
     labelData: {
       patientName: "Marco Fontana",
       patientId: "PAZ-20240315-009",
@@ -759,7 +721,6 @@ export const preparations: Preparation[] = [
     startedAt: "11:05",
     finishedAt: "11:15",
     photos: syringePhotos("Pantoprazolo 40mg", "NaCl 0.9% 10ml", "8090123456789"),
-    supplementaryDoses: [],
     labelData: {
       patientName: "Silvia Greco",
       patientId: "PAZ-20240315-010",
