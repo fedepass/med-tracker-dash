@@ -469,13 +469,20 @@ function formatTS(ts: string | null | undefined): string | null {
 }
 
 function calcDuration(start: string, end: string): string {
-  // Supporta "HH:MM" e "DD/MM/YYYY HH:MM"
-  const timePart = (s: string) => s.includes(" ") ? s.split(" ")[1] : s;
-  const [sh, sm] = timePart(start).split(":").map(Number);
-  const [eh, em] = timePart(end).split(":").map(Number);
-  const diff = (eh * 60 + em) - (sh * 60 + sm);
-  if (diff <= 0) return "—";
-  return `${diff} min`;
+  // Formato atteso: "DD/MM/YYYY HH:MM"
+  const toMinutes = (s: string) => {
+    const parts = s.split(" ");
+    if (parts.length < 2) return NaN;
+    const [dd, mo, yyyy] = parts[0].split("/").map(Number);
+    const [hh, mm] = parts[1].split(":").map(Number);
+    return Date.UTC(yyyy, mo - 1, dd, hh, mm) / 60000;
+  };
+  const diff = toMinutes(end) - toMinutes(start);
+  if (!isFinite(diff) || diff <= 0) return "—";
+  if (diff < 60) return `${diff} min`;
+  const h = Math.floor(diff / 60);
+  const m = diff % 60;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
 export default PreparationDetail;
