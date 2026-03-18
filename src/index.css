@@ -101,6 +101,9 @@
 }
 
 @layer base {
+  html {
+    font-size: 90%; /* ~14.4px — ottimizzato per schermi da 13" */
+  }
   * {
     @apply border-border;
   }

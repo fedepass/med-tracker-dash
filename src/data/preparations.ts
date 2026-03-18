@@ -47,6 +47,9 @@ export interface Preparation {
   form: string;
   dispensed: number;
   volumeValue: number | null;
+  dosageValue?: number | null;
+  dosageUnit?: string | null;
+  specificGravity?: number | null;
   errorRate: number;
   executor: string | null;
   executorInitials: string | null;
