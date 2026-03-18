@@ -50,7 +50,6 @@ const PreparationDetail = () => {
   const [valHistory, setValHistory] = useState<Array<{
     id: number;
     action: string;
-    previous_value: string | null;
     reason: string | null;
     actor_name: string | null;
     created_at: string;
@@ -427,11 +426,6 @@ const PreparationDetail = () => {
                         </div>
                         {entry.reason && (
                           <p className="mt-0.5 text-xs text-muted-foreground">Motivo: {entry.reason}</p>
-                        )}
-                        {entry.previous_value && (
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            Precedente: {entry.previous_value === "validata" ? "Validata" : entry.previous_value === "rifiutata" ? "Rifiutata" : entry.previous_value}
-                          </p>
                         )}
                         {entry.actor_name && (
                           <p className="mt-0.5 text-xs text-muted-foreground">Operatore: {entry.actor_name}</p>
