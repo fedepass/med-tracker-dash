@@ -86,9 +86,9 @@ const PreparationDetail = () => {
           volumeValue:      data.volume_value != null ? Number(data.volume_value) : null,
           errorRate:        Number(data.error_rate ?? data.errorRate ?? 0),
           date:             String(data.date).slice(0, 10),
-          requestedAt:      data.requested_at != null ? String(data.requested_at).slice(0, 5) : (data.requestedAt ?? null),
-          startedAt:        data.started_at  != null ? String(data.started_at).slice(0,  5)  : (data.startedAt  ?? null),
-          finishedAt:       data.finished_at != null ? String(data.finished_at).slice(0,  5) : (data.finishedAt ?? null),
+          requestedAt:      formatTS(data.created_at),
+          startedAt:        formatDT(data.date, data.started_at),
+          finishedAt:       formatDT(data.date, data.finished_at),
           hl7PrescriptionId: data.hl7_prescription_id ?? data.hl7PrescriptionId ?? null,
           executor:         data.executor_name ?? (typeof data.executor === "object" && data.executor !== null ? data.executor.name : data.executor) ?? null,
           executorInitials: data.executor_initials ?? (typeof data.executor === "object" && data.executor !== null ? data.executor.initials : data.executorInitials) ?? null,
@@ -298,7 +298,7 @@ const PreparationDetail = () => {
                 <Timer className="h-5 w-5 text-primary" /> Tempi di Esecuzione
               </h2>
               <div className="space-y-3">
-                <TimeRow icon={<Clock className="h-4 w-4 text-status-waiting" />} label="Richiesta" value={prep.requestedAt} />
+                <TimeRow icon={<Clock className="h-4 w-4 text-status-waiting" />} label="Richiesta" value={prep.requestedAt ?? "—"} />
                 <TimeRow icon={<ArrowRight className="h-4 w-4 text-status-progress" />} label="Inizio" value={prep.startedAt ?? "—"} />
                 <TimeRow icon={<Check className="h-4 w-4 text-status-complete" />} label="Fine" value={prep.finishedAt ?? (prep.status === "esecuzione" ? "In corso..." : "—")} highlight={prep.status === "esecuzione"} />
                 {prep.startedAt && prep.finishedAt && (
@@ -487,12 +487,12 @@ const PreparationDetail = () => {
   );
 };
 
-const TimeRow = ({ icon, label, value, highlight }: { icon: React.ReactNode; label: string; value: string; highlight?: boolean }) => (
+const TimeRow = ({ icon, label, value, highlight }: { icon: React.ReactNode; label: string; value: string | null; highlight?: boolean }) => (
   <div className="flex items-center justify-between">
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
       {icon} {label}
     </div>
-    <span className={`text-sm font-medium ${highlight ? "text-status-progress" : "text-foreground"}`}>{value}</span>
+    <span className={`text-sm font-medium ${highlight ? "text-status-progress" : "text-foreground"}`}>{value ?? "—"}</span>
   </div>
 );
 
@@ -503,9 +503,29 @@ const LabelRow = ({ label, value, mono }: { label: string; value: string; mono?:
   </div>
 );
 
+/** Combina una data (YYYY-MM-DD) con un orario (HH:MM o HH:MM:SS) → "DD/MM/YYYY HH:MM" */
+function formatDT(date: string | null | undefined, time: string | null | undefined): string | null {
+  if (!date || !time) return null;
+  const d = String(date).slice(0, 10);
+  const t = String(time).slice(0, 5);
+  const [y, mo, dd] = d.split("-");
+  return `${dd}/${mo}/${y} ${t}`;
+}
+
+/** Formatta un timestamp ISO → "DD/MM/YYYY HH:MM" */
+function formatTS(ts: string | null | undefined): string | null {
+  if (!ts) return null;
+  const dt = new Date(ts);
+  if (isNaN(dt.getTime())) return null;
+  return dt.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+    + " " + dt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+}
+
 function calcDuration(start: string, end: string): string {
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
+  // Supporta "HH:MM" e "DD/MM/YYYY HH:MM"
+  const timePart = (s: string) => s.includes(" ") ? s.split(" ")[1] : s;
+  const [sh, sm] = timePart(start).split(":").map(Number);
+  const [eh, em] = timePart(end).split(":").map(Number);
   const diff = (eh * 60 + em) - (sh * 60 + sm);
   if (diff <= 0) return "—";
   return `${diff} min`;

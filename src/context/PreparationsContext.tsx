@@ -21,6 +21,24 @@ function resolvePhoto(p: { type: string; label: string; assetKey?: string; barco
   return { type: p.type as Preparation["photos"][number]["type"], label: p.label, url, barcode: p.barcode };
 }
 
+/** Combina una data (YYYY-MM-DD) con un orario (HH:MM o HH:MM:SS) → "DD/MM/YYYY HH:MM" */
+function formatDT(date: string | null | undefined, time: string | null | undefined): string | null {
+  if (!date || !time) return null;
+  const d = String(date).slice(0, 10);
+  const t = String(time).slice(0, 5);
+  const [y, mo, dd] = d.split("-");
+  return `${dd}/${mo}/${y} ${t}`;
+}
+
+/** Formatta un timestamp ISO → "DD/MM/YYYY HH:MM" */
+function formatTS(ts: string | null | undefined): string | null {
+  if (!ts) return null;
+  const dt = new Date(ts);
+  if (isNaN(dt.getTime())) return null;
+  return dt.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+    + " " + dt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+}
+
 function mapPreparation(r: any): Preparation {
   // L'API restituisce campi flat (snake_case). Supporta anche il vecchio formato annidato.
   const label = r.label ?? r.labelData ?? {};
@@ -40,9 +58,9 @@ function mapPreparation(r: any): Preparation {
     dosageUnit:       r.dosage_unit     ?? null,
     specificGravity:  r.specific_gravity != null ? Number(r.specific_gravity) : null,
     date:             String(r.date).slice(0, 10),
-    requestedAt:      r.requested_at != null ? String(r.requested_at).slice(0, 5) : (r.requestedAt ?? null),
-    startedAt:        r.started_at  != null ? String(r.started_at).slice(0,  5)  : (r.startedAt  ?? null),
-    finishedAt:       r.finished_at != null ? String(r.finished_at).slice(0,  5) : (r.finishedAt ?? null),
+    requestedAt:      formatTS(r.created_at),
+    startedAt:        formatDT(r.date, r.started_at),
+    finishedAt:       formatDT(r.date, r.finished_at),
     hl7PrescriptionId: r.hl7_prescription_id ?? r.hl7PrescriptionId ?? null,
     // API piatta: executor_name/cappa_name; oppure oggetto annidato (formato legacy)
     executor:         r.executor_name ?? (typeof r.executor === "object" && r.executor !== null ? r.executor.name : r.executor) ?? null,
