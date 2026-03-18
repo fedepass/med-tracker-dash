@@ -3,17 +3,7 @@ import React from "react";
 import { preparations as initialPreparations, type Preparation, type Status, photoAssets } from "@/data/preparations";
 import { extFetch } from "@/lib/apiClient";
 
-export const rejectionReasons = [
-  "Sovradosaggio",
-  "Sottodosaggio",
-  "Farmaco errato",
-  "Contaminazione",
-  "Contenitore errato",
-  "Diluente errato",
-  "Altro",
-] as const;
-
-export type RejectionReason = (typeof rejectionReasons)[number];
+export type RejectionReason = string;
 
 
 function resolvePhoto(p: { type: string; label: string; assetKey?: string; barcode?: string }) {
@@ -129,7 +119,7 @@ export const usePreparations = () => {
 
 export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
   const [preps, setPreps] = useState<Preparation[]>(initialPreparations);
-  const [rejectionMap, setRejectionMap] = useState<Record<string, RejectionReason>>({});
+  const [rejectionMap, setRejectionMap] = useState<Record<string, string>>({});
   const [previousStatusMap, setPreviousStatusMap] = useState<Record<string, Status>>({});
   const [barcodeMode, setBarcodeMode] = useState<"detail" | "select">("detail");
   const [barcodeSelectedIds, setBarcodeSelectedIds] = useState<string[]>([]);
@@ -148,9 +138,9 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
       const data = await fetchPreparationsFromAPI();
       setPreps(data);
       // Ripristina i motivi di rifiuto dal DB
-      const map: Record<string, RejectionReason> = {};
+      const map: Record<string, string> = {};
       data.forEach((p: any) => {
-        if (p.rejectionReason) map[p.id] = p.rejectionReason as RejectionReason;
+        if (p.rejectionReason) map[p.id] = p.rejectionReason;
       });
       setRejectionMap(map);
     } catch {
@@ -250,7 +240,7 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
       // Revert optimistic update on failure
       if (prev_prep) {
         setPreps((prev) => prev.map((p) => (p.id === id ? prev_prep : p)));
-        if (prev_prep.rejectionReason) setRejectionMap((prev) => ({ ...prev, [id]: prev_prep.rejectionReason as RejectionReason }));
+        if (prev_prep.rejectionReason) setRejectionMap((prev) => ({ ...prev, [id]: prev_prep.rejectionReason! }));
       }
     }
   }, [refreshPreparations, preps]);

@@ -15,18 +15,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { rejectionReasons, type RejectionReason } from "@/context/PreparationsContext";
+import { extFetch } from "@/lib/apiClient";
 
 interface RejectDialogProps {
   open: boolean;
   preparationIds: string[];
-  defaultReason?: RejectionReason;
-  onConfirm: (reason: RejectionReason) => void;
+  defaultReason?: string;
+  onConfirm: (reason: string) => void;
   onCancel: () => void;
 }
 
 const RejectDialog = ({ open, preparationIds, defaultReason, onConfirm, onCancel }: RejectDialogProps) => {
-  const [reason, setReason] = useState<RejectionReason | "">(defaultReason ?? "");
+  const [reason, setReason] = useState<string>(defaultReason ?? "");
+  const [reasons, setReasons] = useState<{ id: number; reason: string }[]>([]);
+
+  useEffect(() => {
+    extFetch("/rejection-reasons")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setReasons(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (open) setReason(defaultReason ?? "");
@@ -34,7 +42,7 @@ const RejectDialog = ({ open, preparationIds, defaultReason, onConfirm, onCancel
 
   const handleConfirm = () => {
     if (reason) {
-      onConfirm(reason as RejectionReason);
+      onConfirm(reason);
       setReason("");
     }
   };
@@ -55,14 +63,14 @@ const RejectDialog = ({ open, preparationIds, defaultReason, onConfirm, onCancel
             Seleziona il motivo del rifiuto per {preparationIds.length > 1 ? `${preparationIds.length} preparazioni` : preparationIds[0]}.
           </DialogDescription>
         </DialogHeader>
-        <Select value={reason} onValueChange={(v) => setReason(v as RejectionReason)}>
+        <Select value={reason} onValueChange={setReason}>
           <SelectTrigger>
             <SelectValue placeholder="Seleziona motivo..." />
           </SelectTrigger>
           <SelectContent>
-            {rejectionReasons.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
+            {reasons.map((r) => (
+              <SelectItem key={r.id} value={r.reason}>
+                {r.reason}
               </SelectItem>
             ))}
           </SelectContent>
