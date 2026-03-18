@@ -13,7 +13,7 @@ import RejectDialog from "@/components/dashboard/RejectDialog";
 import {
   ArrowLeft, CheckCircle2, Loader, AlertTriangle, Clock,
   Check, X, Printer, Camera, ScanBarcode, Beaker, FlaskConical,
-  Package, Timer, Droplets, ArrowRight, ShieldCheck, ShieldX, RotateCcw,
+  Package, Timer, Droplets, ArrowRight, ShieldCheck, ShieldX, RotateCcw, History,
 } from "lucide-react";
 
 const statusConfig: Record<Status, { icon: React.ReactNode; label: string; className: string; bgClassName: string }> = {
@@ -47,6 +47,23 @@ const PreparationDetail = () => {
   const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation } = usePreparations();
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [detailData, setDetailData] = useState<Preparation | null>(null);
+  const [valHistory, setValHistory] = useState<Array<{
+    id: number;
+    action: string;
+    previous_value: string | null;
+    reason: string | null;
+    actor_name: string | null;
+    created_at: string;
+  }>>([]);
+
+  // Fetch validation history
+  useEffect(() => {
+    if (!id) return;
+    extFetch(`/preparations/${id}/validation-history`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setValHistory(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [id]);
 
   // Fetch completo dalla API per avere photos e supplementaryDoses
   useEffect(() => {
@@ -374,6 +391,57 @@ const PreparationDetail = () => {
                 </div>
               </section>
             )}
+
+            {/* Validation History */}
+            <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
+                <History className="h-5 w-5 text-primary" /> Storico Validazione
+              </h2>
+              {valHistory.length === 0 ? (
+                <p className="py-3 text-center text-sm text-muted-foreground italic">Nessuna operazione registrata.</p>
+              ) : (
+                <ol className="relative border-l border-border ml-3 space-y-4">
+                  {valHistory.map((entry, i) => {
+                    const isLast = i === valHistory.length - 1;
+                    const dotColor =
+                      entry.action === "validata" ? "bg-status-complete" :
+                      entry.action === "rifiutata" ? "bg-status-error" :
+                      "bg-muted-foreground";
+                    const label =
+                      entry.action === "validata" ? "Validata" :
+                      entry.action === "rifiutata" ? "Rifiutata" :
+                      "Annullata";
+                    const textColor =
+                      entry.action === "validata" ? "text-status-complete" :
+                      entry.action === "rifiutata" ? "text-status-error" :
+                      "text-muted-foreground";
+                    const dt = new Date(entry.created_at);
+                    const dateStr = dt.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
+                    const timeStr = dt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+                    return (
+                      <li key={entry.id} className="ml-4">
+                        <span className={`absolute -left-1.5 mt-1 h-3 w-3 rounded-full border-2 border-card ${dotColor} ${isLast ? "ring-2 ring-offset-1 ring-offset-card ring-border" : ""}`} />
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className={`text-sm font-semibold ${textColor}`}>{label}</span>
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">{dateStr} {timeStr}</span>
+                        </div>
+                        {entry.reason && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">Motivo: {entry.reason}</p>
+                        )}
+                        {entry.previous_value && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Precedente: {entry.previous_value === "validata" ? "Validata" : entry.previous_value === "rifiutata" ? "Rifiutata" : entry.previous_value}
+                          </p>
+                        )}
+                        {entry.actor_name && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">Operatore: {entry.actor_name}</p>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </section>
 
             {/* Label Data */}
             <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
