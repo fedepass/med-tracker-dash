@@ -243,8 +243,10 @@ function ProcessDetail({ config, onBack }: { config: ProcessConfig; onBack: () =
       .catch(() => {});
   }, [config.id]);
 
-  // Group catalog by category
-  const categories = Array.from(new Set(catalog.map((f) => f.category ?? ""))).filter(Boolean);
+  // Ordine fisso delle categorie
+  const CATEGORY_ORDER = ["farmaco", "contenitore", "pesata", "finale"];
+  const extraCategories = Array.from(new Set(catalog.map((f) => f.category ?? ""))).filter((c) => c && !CATEGORY_ORDER.includes(c));
+  const categories = [...CATEGORY_ORDER, ...extraCategories].filter((c) => catalog.some((f) => f.category === c));
   const selectedIds = new Set(steps.map((s) => s.function_id));
 
   function toggleFunction(fn: FunctionEntry) {
