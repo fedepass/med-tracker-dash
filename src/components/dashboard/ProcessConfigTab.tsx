@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { extFetch } from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -228,6 +228,8 @@ function ProcessDetail({ config, onBack }: { config: ProcessConfig; onBack: () =
   const [catalog, setCatalog] = useState<FunctionEntry[]>([]);
   const [steps, setSteps] = useState<Step[]>([]);
   const [saving, setSaving] = useState(false);
+  const dragIdx = useRef<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   useEffect(() => {
     extFetch("/config/functions-catalog")
@@ -273,6 +275,33 @@ function ProcessDetail({ config, onBack }: { config: ProcessConfig; onBack: () =
       [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
       return next;
     });
+  }
+
+  function handleDragStart(idx: number) {
+    dragIdx.current = idx;
+  }
+
+  function handleDragOver(e: React.DragEvent, idx: number) {
+    e.preventDefault();
+    setDragOverIdx(idx);
+  }
+
+  function handleDrop(toIdx: number) {
+    const fromIdx = dragIdx.current;
+    if (fromIdx === null || fromIdx === toIdx) { setDragOverIdx(null); return; }
+    setSteps((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+    dragIdx.current = null;
+    setDragOverIdx(null);
+  }
+
+  function handleDragEnd() {
+    dragIdx.current = null;
+    setDragOverIdx(null);
   }
 
   async function handleSave() {
@@ -352,7 +381,7 @@ function ProcessDetail({ config, onBack }: { config: ProcessConfig; onBack: () =
             <h4 className="text-sm font-semibold text-foreground">Sequenza di esecuzione</h4>
             <Badge variant="secondary" className="text-xs">{steps.length} funzioni</Badge>
           </div>
-          <p className="text-xs text-muted-foreground">Usa le frecce per riordinare.</p>
+          <p className="text-xs text-muted-foreground">Trascina o usa le frecce per riordinare.</p>
 
           {steps.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground italic">
@@ -363,9 +392,18 @@ function ProcessDetail({ config, onBack }: { config: ProcessConfig; onBack: () =
               {steps.map((step, idx) => (
                 <li
                   key={step.function_id}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2"
+                  draggable
+                  onDragStart={() => handleDragStart(idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDrop={() => handleDrop(idx)}
+                  onDragEnd={handleDragEnd}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors select-none ${
+                    dragOverIdx === idx && dragIdx.current !== idx
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-secondary/30"
+                  }`}
                 >
-                  <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+                  <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 cursor-grab active:cursor-grabbing" />
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
                     {idx + 1}
                   </span>
