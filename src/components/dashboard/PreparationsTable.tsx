@@ -162,11 +162,6 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
 
   const thClass = "px-4 py-3 cursor-pointer select-none hover:text-foreground transition-colors";
 
-  const fmtDate = (iso: string) => {
-    const [, mm, dd] = iso.split("-");
-    return `${dd}/${mm}`;
-  };
-
   // ── Empty state ──────────────────────────────────────────────────────────
   if (sorted.length === 0) {
     return (
@@ -423,18 +418,18 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                     <div className="space-y-0.5 text-xs text-muted-foreground">
                       <p>
                         <Clock className="mr-1 inline h-3 w-3 text-status-waiting" />
-                        Richiesta: {fmtDate(p.date)} {p.requestedAt}
+                        Richiesta: {p.requestedAt}
                       </p>
                       {p.startedAt && (
                         <p>
                           <ArrowRight className="mr-1 inline h-3 w-3 text-status-progress" />
-                          Inizio: {fmtDate(p.date)} {p.startedAt}
+                          Inizio: {p.startedAt}
                         </p>
                       )}
                       {p.finishedAt && (
                         <p>
                           <Check className="mr-1 inline h-3 w-3 text-status-complete" />
-                          Fine: {fmtDate(p.date)} {p.finishedAt}
+                          Fine: {p.finishedAt}
                         </p>
                       )}
                       {p.status === "esecuzione" && (
