@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extFetch } from "@/lib/apiClient";
+import ProcessConfigTab from "@/components/dashboard/ProcessConfigTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1326,6 +1327,7 @@ export default function Config() {
             <TabsTrigger value="cappe">Cappe</TabsTrigger>
             <TabsTrigger value="farmaci">Farmaci</TabsTrigger>
             <TabsTrigger value="assignment">Strategia assegnazione</TabsTrigger>
+            <TabsTrigger value="processi">Processi</TabsTrigger>
           </TabsList>
 
           {/* ─── Tab: Cappe ─── */}
@@ -1710,6 +1712,12 @@ export default function Config() {
               </div>
             </div>
           </TabsContent>
+
+          {/* ─── Tab: Processi ─── */}
+          <TabsContent value="processi">
+            <ProcessConfigTab />
+          </TabsContent>
+
         </Tabs>
       </main>
 
