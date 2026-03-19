@@ -63,6 +63,12 @@ interface Drug {
   specific_gravity: number | null;
   vial_volume: number | null;
   needs_review: boolean;
+  process_config_id: number | null;
+}
+
+interface ProcessConfig {
+  id: number;
+  name: string;
 }
 
 // ─── Strategy definitions ──────────────────────────────────────────────────────
@@ -513,6 +519,7 @@ interface DrugDialogProps {
 }
 
 function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugDialogProps) {
+  const [processConfigs, setProcessConfigs] = useState<ProcessConfig[]>([]);
   const [name,                    setName]                    = useState(initial?.name ?? "");
   const [code,                    setCode]                    = useState(initial?.code ?? "");
   const [aicCode,                 setAicCode]                 = useState(initial?.aic_code ?? "");
@@ -523,6 +530,7 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
   const [reconVolumeUnit,         setReconVolumeUnit]         = useState(initial?.reconstitution_volume_unit ?? "ml");
   const [specificGravity,         setSpecificGravity]         = useState(initial?.specific_gravity?.toString() ?? "");
   const [vialVolume,              setVialVolume]              = useState(initial?.vial_volume?.toString() ?? "");
+  const [processConfigId,         setProcessConfigId]         = useState<string>(initial?.process_config_id?.toString() ?? "");
   const [lookupLoading,           setLookupLoading]           = useState(false);
   const [lookupResults,           setLookupResults]           = useState<LookupResult[]>([]);
   const [lookupError,             setLookupError]             = useState<string | null>(null);
@@ -543,10 +551,15 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
       setReconVolumeUnit(initial?.reconstitution_volume_unit ?? "ml");
       setSpecificGravity(initial?.specific_gravity?.toString() ?? "");
       setVialVolume(initial?.vial_volume?.toString() ?? "");
+      setProcessConfigId(initial?.process_config_id?.toString() ?? "");
       setLookupResults([]);
       setLookupError(null);
       setAicPresentations([]);
       setCatMode(initCat && !categories.includes(initCat) ? "new" : "select");
+      extFetch("/config/process-configs")
+        .then((r) => r.ok ? r.json() : [])
+        .then((data) => setProcessConfigs(Array.isArray(data) ? data.map(({ id, name }: { id: number; name: string }) => ({ id, name })) : []))
+        .catch(() => {});
     }
   }, [open, initial]);
 
@@ -622,6 +635,7 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
       reconstitution_volume_unit: isPowder && reconVolume ? reconVolumeUnit : null,
       specific_gravity: specificGravity ? parseFloat(specificGravity) : null,
       vial_volume: vialVolume ? parseFloat(vialVolume) : null,
+      process_config_id: processConfigId ? parseInt(processConfigId) : null,
     });
   };
 
@@ -964,6 +978,23 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
             )}
           </div>
 
+          {/* ── Sezione: Configurazione processo ─────────────────── */}
+          {processConfigs.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Configurazione processo</Label>
+              <Select value={processConfigId || ""} onValueChange={setProcessConfigId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona configurazione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {processConfigs.map((pc) => (
+                    <SelectItem key={pc.id} value={pc.id.toString()}>{pc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
         </div>
 
         <DialogFooter>
@@ -994,6 +1025,7 @@ export default function Config() {
 
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [newCategory, setNewCategory] = useState("");
+  const [processConfigs, setProcessConfigs] = useState<ProcessConfig[]>([]);
 
   const [apiProvider, setApiProvider] = useState<"chembl" | "rxnorm" | "aifa" | "custom">("chembl");
   const [apiBaseUrl, setApiBaseUrl] = useState("");
@@ -1102,6 +1134,10 @@ export default function Config() {
     fetchCategories();
     fetchApiConfig();
     fetchAifaStatus();
+    extFetch("/config/process-configs")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setProcessConfigs(Array.isArray(data) ? data.map(({ id, name }: { id: number; name: string }) => ({ id, name })) : []))
+      .catch(() => {});
   }, [fetchCappe, fetchStrategy, fetchDrugs, fetchCategories, fetchApiConfig, fetchAifaStatus]);
 
   // ─── Cappe CRUD ───────────────────────────────────────────────────────────
@@ -1548,6 +1584,7 @@ export default function Config() {
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Ricostituzione</th>
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Peso spec.</th>
                         <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Vol. flacone</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Processo</th>
                         <th className="px-4 py-2.5 w-20" />
                       </tr>
                     </thead>
@@ -1594,6 +1631,13 @@ export default function Config() {
                           </td>
                           <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
                             {drug.vial_volume != null ? <span>{drug.vial_volume} ml</span> : <span>—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
+                            {drug.process_config_id != null
+                              ? <Badge variant="outline" className="text-[11px] font-normal">
+                                  {processConfigs.find((p) => p.id === drug.process_config_id)?.name ?? drug.process_config_id}
+                                </Badge>
+                              : <span>—</span>}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1">
