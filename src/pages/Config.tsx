@@ -537,6 +537,12 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
   const [catMode,                 setCatMode]                 = useState<"select" | "new">("select");
   const [aicPresentations,        setAicPresentations]        = useState<AicPresentation[]>([]);
   const [aicPresLoading,          setAicPresLoading]          = useState(false);
+  const [medicinaliData,          setMedicinaliData]          = useState<{
+    denominazione: string; forma_farmaceutica: string; is_polvere: boolean;
+    volume_ml: number | null; codice_atc: string | null; descrizione_atc: string | null;
+    azienda: string; denominazione_package: string;
+  } | null>(null);
+  const [medicinaliLoading,       setMedicinaliLoading]       = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -555,6 +561,7 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
       setLookupResults([]);
       setLookupError(null);
       setAicPresentations([]);
+      setMedicinaliData(null);
       setCatMode(initCat && !categories.includes(initCat) ? "new" : "select");
       extFetch("/config/process-configs")
         .then((r) => r.ok ? r.json() : [])
@@ -562,6 +569,23 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
         .catch(() => {});
     }
   }, [open, initial]);
+
+  // Fetch live da AIFA Medicinali quando AIC è 9 cifre
+  useEffect(() => {
+    const digits = aicCode.replace(/\D/g, "");
+    if (!open || digits.length < 6) { setMedicinaliData(null); return; }
+    const timer = setTimeout(async () => {
+      setMedicinaliLoading(true);
+      try {
+        const res = await extFetch(`/config/drug-lookup/medicinali-live?aic=${encodeURIComponent(digits)}`);
+        if (res.ok) setMedicinaliData(await res.json());
+        else setMedicinaliData(null);
+      } catch { setMedicinaliData(null); } finally {
+        setMedicinaliLoading(false);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [aicCode, open]);
 
   // Debounced AIC presentations fetch — si attiva al cambio del nome
   useEffect(() => {
@@ -617,6 +641,13 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
         setReconVolumeUnit("ml");
       }
     }
+  };
+
+  const applyMedicinali = () => {
+    if (!medicinaliData) return;
+    if (medicinaliData.volume_ml != null) setVialVolume(String(medicinaliData.volume_ml));
+    if (medicinaliData.is_polvere) setIsPowder(true);
+    if (medicinaliData.codice_atc && !code) setCode(medicinaliData.codice_atc);
   };
 
   const filteredCatSuggestions = category.trim()
@@ -765,6 +796,44 @@ function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugD
                 )}
               </div>
             </div>
+
+            {/* Live AIFA Medicinali */}
+            {(medicinaliLoading || medicinaliData) && (
+              <div className={`rounded-md border px-3 py-2.5 space-y-1.5 ${medicinaliData ? "border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800" : "border-border"}`}>
+                {medicinaliLoading && (
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <RefreshCw className="h-3 w-3 animate-spin" /> Ricerca su AIFA Medicinali...
+                  </p>
+                )}
+                {medicinaliData && (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">{medicinaliData.denominazione}</p>
+                        <p className="text-[11px] text-muted-foreground">{medicinaliData.forma_farmaceutica}</p>
+                        {medicinaliData.azienda && (
+                          <p className="text-[10px] text-muted-foreground/70">{medicinaliData.azienda}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {medicinaliData.is_polvere && (
+                          <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">POLVERE</span>
+                        )}
+                        {medicinaliData.volume_ml != null && (
+                          <span className="font-mono text-[11px] bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded">{medicinaliData.volume_ml} ml</span>
+                        )}
+                        {medicinaliData.codice_atc && (
+                          <span className="font-mono text-[11px] bg-muted px-1.5 py-0.5 rounded">{medicinaliData.codice_atc}</span>
+                        )}
+                      </div>
+                    </div>
+                    <Button type="button" size="sm" variant="outline" className="h-7 text-xs w-full" onClick={applyMedicinali}>
+                      Applica dati AIFA Medicinali
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Confezione AIFA */}
             {(aicPresentations.length > 0 || aicPresLoading) && (
