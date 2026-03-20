@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import RejectDialog from "@/components/dashboard/RejectDialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import {
   ArrowLeft, CheckCircle2, Loader, AlertTriangle, Clock,
   Check, X, Printer, Camera, ScanBarcode, Beaker, FlaskConical,
@@ -54,6 +56,35 @@ const PreparationDetail = () => {
     actor_name: string | null;
     created_at: string;
   }>>([]);
+  const [drugCatalogId,       setDrugCatalogId]       = useState<number | null>(null);
+  const [containerCatalogId,  setContainerCatalogId]  = useState<number | null>(null);
+  const [drugOptions,         setDrugOptions]         = useState<{ id: number; name: string }[]>([]);
+  const [containerOptions,    setContainerOptions]    = useState<{ id: number; name: string; volume_ml: number | null }[]>([]);
+  const [linkSaving,          setLinkSaving]          = useState(false);
+
+  // Fetch catalog options
+  useEffect(() => {
+    extFetch("/config/drugs").then((r) => r.ok ? r.json() : []).then((d: any[]) => setDrugOptions(d.map(({ id, name }) => ({ id, name })))).catch(() => {});
+    extFetch("/config/containers").then((r) => r.ok ? r.json() : []).then((d: any[]) => setContainerOptions(d.map(({ id, name, volume_ml }) => ({ id, name, volume_ml })))).catch(() => {});
+  }, []);
+
+  const handleSaveCatalogLinks = async () => {
+    if (!id) return;
+    setLinkSaving(true);
+    try {
+      const res = await extFetch(`/preparations/${id}/catalog-links`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drug_catalog_id: drugCatalogId, container_catalog_id: containerCatalogId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast.success("Associazioni catalogo salvate");
+    } catch (err) {
+      toast.error("Errore nel salvataggio", { description: String(err) });
+    } finally {
+      setLinkSaving(false);
+    }
+  };
 
   // Fetch validation history
   useEffect(() => {
@@ -71,6 +102,8 @@ const PreparationDetail = () => {
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (!data) return;
+        setDrugCatalogId(data.drug_catalog_id ?? null);
+        setContainerCatalogId(data.container_catalog_id ?? null);
         const label = data.label ?? data.labelData ?? {};
         setDetailData({
           id:               String(data.id),
@@ -388,6 +421,49 @@ const PreparationDetail = () => {
                   })}
                 </ol>
               )}
+            </section>
+
+            {/* Catalog Links */}
+            <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <FlaskConical className="h-5 w-5 text-primary" />
+                <h2 className="text-base font-semibold text-foreground">Associazione catalogo</h2>
+              </div>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <span className="text-xs text-muted-foreground">Farmaco dal catalogo</span>
+                  <Select value={drugCatalogId?.toString() ?? "none"} onValueChange={(v) => setDrugCatalogId(v === "none" ? null : Number(v))}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Seleziona farmaco..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none"><span className="text-muted-foreground">— Nessuno —</span></SelectItem>
+                      {drugOptions.map((d) => (
+                        <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-xs text-muted-foreground">Contenitore dal catalogo</span>
+                  <Select value={containerCatalogId?.toString() ?? "none"} onValueChange={(v) => setContainerCatalogId(v === "none" ? null : Number(v))}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Seleziona contenitore..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none"><span className="text-muted-foreground">— Nessuno —</span></SelectItem>
+                      {containerOptions.map((c) => (
+                        <SelectItem key={c.id} value={c.id.toString()}>
+                          {c.name}{c.volume_ml ? ` · ${c.volume_ml} ml` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button size="sm" className="h-8 text-xs w-full" onClick={handleSaveCatalogLinks} disabled={linkSaving}>
+                  {linkSaving ? "Salvataggio..." : "Salva associazioni"}
+                </Button>
+              </div>
             </section>
 
             {/* Label Data */}

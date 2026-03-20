@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight,
   ArrowUpDown, ArrowUp, ArrowDown, Search, ShieldCheck, ShieldX, PackageOpen, RotateCcw,
+  LinkIcon, Unlink,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -160,7 +161,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
     return "bg-muted-foreground";
   };
 
-  const thClass = "px-4 py-3 cursor-pointer select-none hover:text-foreground transition-colors";
+  const thClass = "px-3 py-1.5 cursor-pointer select-none hover:text-foreground transition-colors";
 
   // ── Empty state ──────────────────────────────────────────────────────────
   if (sorted.length === 0) {
@@ -244,14 +245,14 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              {mode === "active" && <th className="w-10 px-5 py-3" />}
+              {mode === "active" && <th className="w-10 px-3 py-1.5" />}
               <th className={thClass} onClick={() => toggleSort("status")}>
                 <span className="inline-flex items-center gap-1">ID / Stato <SortIcon col="status" /></span>
               </th>
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Validazione</th>
+              <th className="px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">Validazione</th>
               <th className={thClass} onClick={() => toggleSort("priority")}>
                 <span className="inline-flex items-center gap-1">Priorità <SortIcon col="priority" /></span>
               </th>
@@ -261,11 +262,11 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
               <th className={thClass} onClick={() => toggleSort("dispensed")}>
                 <span className="inline-flex items-center gap-1">Contenitore <SortIcon col="dispensed" /></span>
               </th>
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <th className="px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Dosato
               </th>
               <th className={thClass} onClick={() => toggleSort("errorRate")}>
-                <span className="inline-flex items-center gap-1">Errore % <SortIcon col="errorRate" /></span>
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">Err % <SortIcon col="errorRate" /></span>
               </th>
               <th className={thClass} onClick={() => toggleSort("executor")}>
                 <span className="inline-flex items-center gap-1">Postazione <SortIcon col="executor" /></span>
@@ -274,9 +275,9 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                 <span className="inline-flex items-center gap-1">Tempistiche <SortIcon col="requestedAt" /></span>
               </th>
               {mode === "archived" && (
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider">Motivo</th>
+                <th className="px-3 py-1.5 text-xs font-medium uppercase tracking-wider">Motivo</th>
               )}
-              <th className="px-4 py-3">Azioni</th>
+              <th className="px-3 py-1.5">Azioni</th>
             </tr>
           </thead>
           <tbody>
@@ -291,18 +292,18 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                   className={`border-b border-border transition-colors last:border-0 hover:bg-secondary/50 ${mode === "active" ? "cursor-pointer" : ""} ${selected.has(p.id) ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
                 >
                   {mode === "active" && (
-                    <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} />
                     </td>
                   )}
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-1.5">
                     <p className="font-semibold text-foreground">{p.id}</p>
                     <div className={`flex items-center gap-1 text-xs ${sc.className}`}>
                       {sc.icon}
                       {sc.label}
                     </div>
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-1.5">
                     {p.validationStatus ? (
                       <div className={`flex items-center gap-1 text-xs ${validationConfig[p.validationStatus].className}`}>
                         {validationConfig[p.validationStatus].icon}
@@ -312,18 +313,27 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-1.5">
                     <Badge variant="outline" className={`border-0 text-[10px] font-medium ${pc.className}`}>
                       {pc.label}
                     </Badge>
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-1.5">
                     <p className="font-medium text-foreground">{p.drug}</p>
                     {p.labelData.dosage && (
                       <p className="text-xs text-muted-foreground mt-0.5">{p.labelData.dosage}</p>
                     )}
+                    {p.drugCatalogId != null ? (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                        <LinkIcon className="h-2.5 w-2.5" />{p.drugCatalogName ?? "catalogo"}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 mt-0.5" title="Farmaco non associato al catalogo">
+                        <Unlink className="h-2.5 w-2.5" />no catalogo
+                      </span>
+                    )}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-1.5">
                     {p.labelData.solvent ? (
                       <p className="text-sm font-medium text-foreground">{p.labelData.solvent}</p>
                     ) : (
@@ -334,8 +344,17 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                     ) : p.volumeValue != null ? (
                       <p className="text-xs text-muted-foreground mt-0.5">{p.volumeValue} ml</p>
                     ) : null}
+                    {p.containerCatalogId != null ? (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                        <LinkIcon className="h-2.5 w-2.5" />{p.containerCatalogName ?? "catalogo"}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 mt-0.5" title="Contenitore non associato al catalogo">
+                        <Unlink className="h-2.5 w-2.5" />no catalogo
+                      </span>
+                    )}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-1.5">
                     {p.dispensed > 0 ? (() => {
                       const sg = p.specificGravity;
                       const unit = p.dosageUnit?.toLowerCase() ?? "";
@@ -373,7 +392,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-1.5">
                     {p.errorRate > 0 ? (
                       <span className={`font-semibold ${
                         p.errorRate <= 5 ? "text-green-600" :
@@ -386,7 +405,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                       <span className="text-muted-foreground">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
                     {mode === "active" && p.status === "attesa" && cappe.length > 0 ? (
                       <Select
                         value={p.cappaId != null ? String(p.cappaId) : "__none__"}
@@ -414,7 +433,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-1.5">
                     <div className="space-y-0.5 text-xs text-muted-foreground">
                       <p>
                         <Clock className="mr-1 inline h-3 w-3 text-status-waiting" />
@@ -438,7 +457,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                     </div>
                   </td>
                   {mode === "archived" && (
-                    <td className="px-4 py-4">
+                    <td className="px-3 py-1.5">
                       {rejectionReason ? (
                         <Badge variant="outline" className="border-0 bg-status-error-bg text-[10px] font-medium text-status-error">
                           {rejectionReason}
@@ -448,7 +467,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                       )}
                     </td>
                   )}
-                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
                     {mode === "active" ? (
                       <div className="flex flex-wrap items-center gap-1.5">
                         {p.status !== "attesa" && p.status !== "esecuzione" && p.validationStatus === null ? (

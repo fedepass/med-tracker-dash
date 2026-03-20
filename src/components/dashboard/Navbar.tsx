@@ -1,6 +1,6 @@
-import { Search, Barcode, BarChart3, Home, ListChecks, ScanLine, Settings } from "lucide-react";
+import { Search, Barcode, BarChart3, Home, ListChecks, ScanLine, Settings, ChevronDown, Wind, Pill, Shuffle, Cpu, TrendingUp, Menu, X as XIcon, ChevronRight, FlaskConical } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,38 @@ import { usePreparations } from "@/context/PreparationsContext";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+const CONFIG_ITEMS = [
+  { label: "Cappe LAF",            tab: "cappe",        icon: Wind,         desc: "Gestione cappe e regole" },
+  { label: "Farmaci",              tab: "farmaci",      icon: Pill,         desc: "Catalogo farmaci" },
+  { label: "Contenitori",          tab: "contenitori",  icon: FlaskConical, desc: "Sacche, siringhe, flaconi" },
+  { label: "Strategia assegnazione", tab: "assignment", icon: Shuffle,      desc: "Priorità e bilanciamento" },
+  { label: "Processi",             tab: "processi",     icon: Cpu,          desc: "Configurazione processi" },
+];
+
+const ANALYTICS_ITEMS = [
+  { label: "Dashboard Analytics",  to: "/analytics",  icon: TrendingUp, desc: "Statistiche e grafici" },
+];
+
+interface DropdownMenuProps {
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+function DropdownPanel({ open, children }: { open: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "absolute top-full left-0 mt-1.5 min-w-[220px] rounded-xl border border-border bg-popover shadow-lg shadow-black/10 z-50 overflow-hidden",
+        "transition-all duration-150 origin-top-left",
+        open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
 const Navbar = () => {
   const location = useLocation();
@@ -20,9 +52,37 @@ const Navbar = () => {
     tableSelected,
   } = usePreparations();
   const [barcodeValue, setBarcodeValue] = useState("");
-  const isAnalytics = location.pathname === "/analytics";
+  const [openMenu, setOpenMenu] = useState<"analytics" | "config" | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileSection, setMobileSection] = useState<"analytics" | "config" | null>(null);
+
+  const analyticsRef = useRef<HTMLDivElement>(null);
+  const configRef = useRef<HTMLDivElement>(null);
+
   const isHome = location.pathname === "/";
+  const isAnalytics = location.pathname === "/analytics";
   const isConfig = location.pathname === "/config";
+
+  // Chiudi dropdown al click esterno
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        analyticsRef.current && !analyticsRef.current.contains(e.target as Node) &&
+        configRef.current && !configRef.current.contains(e.target as Node)
+      ) {
+        setOpenMenu(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Chiudi dropdown al cambio di route
+  useEffect(() => {
+    setOpenMenu(null);
+    setMobileOpen(false);
+    setMobileSection(null);
+  }, [location.pathname, location.search]);
 
   const handleBarcodeSearch = (value: string) => {
     const trimmed = value.trim().toUpperCase();
@@ -73,7 +133,9 @@ const Navbar = () => {
             </div>
             <span className="text-lg font-semibold text-foreground">PharmAR System</span>
           </div>
+
           <nav className="hidden md:flex items-center gap-1 ml-4">
+            {/* Preparazioni */}
             <Link
               to="/"
               className={cn(
@@ -83,32 +145,91 @@ const Navbar = () => {
             >
               <Home className="h-4 w-4" /> Preparazioni
             </Link>
-            <Link
-              to="/analytics"
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-                isAnalytics ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              )}
-            >
-              <BarChart3 className="h-4 w-4" /> Analytics
-            </Link>
-            {isAdmin && (
-              <Link
-                to="/config"
+
+            {/* Analytics dropdown */}
+            <div className="relative" ref={analyticsRef}>
+              <button
+                onClick={() => setOpenMenu(openMenu === "analytics" ? null : "analytics")}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-                  isConfig ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  isAnalytics ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                 )}
               >
-                <Settings className="h-4 w-4" /> Configurazione
-              </Link>
+                <BarChart3 className="h-4 w-4" />
+                Analytics
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-150", openMenu === "analytics" && "rotate-180")} />
+              </button>
+
+              <DropdownPanel open={openMenu === "analytics"}>
+                <div className="p-1.5">
+                  {ANALYTICS_ITEMS.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/60 transition-colors group"
+                    >
+                      <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background group-hover:border-primary/30 group-hover:bg-primary/5 transition-colors",
+                        isAnalytics && "border-primary/30 bg-primary/5")}>
+                        <item.icon className={cn("h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors", isAnalytics && "text-primary")} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className={cn("text-xs font-medium", isAnalytics ? "text-primary" : "text-foreground")}>{item.label}</p>
+                        <p className="text-[11px] text-muted-foreground">{item.desc}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </DropdownPanel>
+            </div>
+
+            {/* Config dropdown (admin only) */}
+            {isAdmin && (
+              <div className="relative" ref={configRef}>
+                <button
+                  onClick={() => setOpenMenu(openMenu === "config" ? null : "config")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                    isConfig ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  )}
+                >
+                  <Settings className="h-4 w-4" />
+                  Configurazione
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-150", openMenu === "config" && "rotate-180")} />
+                </button>
+
+                <DropdownPanel open={openMenu === "config"}>
+                  <div className="px-3 pt-2.5 pb-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Configurazione sistema</p>
+                  </div>
+                  <div className="p-1.5 pt-1">
+                    {CONFIG_ITEMS.map((item) => {
+                      const active = isConfig && location.search.includes(`tab=${item.tab}`);
+                      return (
+                        <Link
+                          key={item.tab}
+                          to={`/config?tab=${item.tab}`}
+                          className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/60 transition-colors group"
+                        >
+                          <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background group-hover:border-primary/30 group-hover:bg-primary/5 transition-colors",
+                            active && "border-primary/30 bg-primary/5")}>
+                            <item.icon className={cn("h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors", active && "text-primary")} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className={cn("text-xs font-medium", active ? "text-primary" : "text-foreground")}>{item.label}</p>
+                            <p className="text-[11px] text-muted-foreground">{item.desc}</p>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </DropdownPanel>
+              </div>
             )}
           </nav>
         </div>
 
         {/* Barcode search */}
         <div className="hidden md:flex items-center gap-2">
-          {/* Mode toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -128,7 +249,6 @@ const Navbar = () => {
             </TooltipContent>
           </Tooltip>
 
-          {/* Input */}
           <div className="relative w-72">
             <Barcode className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -144,7 +264,6 @@ const Navbar = () => {
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
 
-          {/* Badge contatore + clear (solo in modalità select) */}
           {barcodeMode === "select" && tableSelected.size > 0 && (
             <div className="rounded-lg bg-primary/10 px-2.5 py-1.5">
               <span className="text-xs font-semibold text-primary">{tableSelected.size} selezionate</span>
@@ -153,6 +272,15 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Hamburger mobile */}
+          <button
+            className="md:hidden flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-label="Menu"
+          >
+            {mobileOpen ? <XIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">
               <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
@@ -166,6 +294,98 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-border bg-navbar">
+          <nav className="flex flex-col p-3 gap-0.5">
+
+            {/* Preparazioni */}
+            <Link
+              to="/"
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isHome ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              )}
+            >
+              <Home className="h-4 w-4 shrink-0" /> Preparazioni
+            </Link>
+
+            {/* Analytics */}
+            <button
+              onClick={() => setMobileSection(mobileSection === "analytics" ? null : "analytics")}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left",
+                isAnalytics ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              )}
+            >
+              <BarChart3 className="h-4 w-4 shrink-0" />
+              <span className="flex-1">Analytics</span>
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-150", mobileSection === "analytics" && "rotate-180")} />
+            </button>
+            {mobileSection === "analytics" && (
+              <div className="ml-4 pl-3 border-l border-border flex flex-col gap-0.5 mt-0.5 mb-1">
+                {ANALYTICS_ITEMS.map((item) => (
+                  <Link key={item.to} to={item.to}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <item.icon className="h-3.5 w-3.5 shrink-0" />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* Config */}
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => setMobileSection(mobileSection === "config" ? null : "config")}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left",
+                    isConfig ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  )}
+                >
+                  <Settings className="h-4 w-4 shrink-0" />
+                  <span className="flex-1">Configurazione</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-150", mobileSection === "config" && "rotate-180")} />
+                </button>
+                {mobileSection === "config" && (
+                  <div className="ml-4 pl-3 border-l border-border flex flex-col gap-0.5 mt-0.5 mb-1">
+                    {CONFIG_ITEMS.map((item) => {
+                      const active = isConfig && location.search.includes(`tab=${item.tab}`);
+                      return (
+                        <Link key={item.tab} to={`/config?tab=${item.tab}`}
+                          className={cn(
+                            "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors",
+                            active ? "text-primary bg-primary/5" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                          )}
+                        >
+                          <item.icon className="h-3.5 w-3.5 shrink-0" />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* User info mobile */}
+            <div className="mt-2 pt-2 border-t border-border px-3 flex items-center gap-3">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
+                  {displayName ? displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-medium text-foreground">{displayName ?? 'Utente'}</p>
+                <p className="text-xs text-muted-foreground">{role === 'admin' ? 'Amministratore' : 'Operatore'}</p>
+              </div>
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
   );
 };

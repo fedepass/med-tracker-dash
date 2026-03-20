@@ -54,6 +54,10 @@ export interface Preparation {
   finishedAt: string | null;
   photos: ComponentPhoto[];
   labelData: LabelData;
+  drugCatalogId: number | null;
+  containerCatalogId: number | null;
+  drugCatalogName: string | null;
+  containerCatalogName: string | null;
 }
 
 // Photo helpers for consistent usage
