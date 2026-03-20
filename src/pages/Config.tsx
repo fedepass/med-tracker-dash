@@ -79,6 +79,7 @@ interface Container {
   solvent: string | null;
   container_type: string | null;
   enabled: boolean;
+  needs_review: boolean;
 }
 
 // ─── Strategy definitions ──────────────────────────────────────────────────────
@@ -1539,6 +1540,17 @@ export default function Config() {
     }
   };
 
+  const handleApproveContainer = async (id: number) => {
+    try {
+      const res = await extFetch(`/config/containers/${id}/approve`, { method: "PATCH" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setContainers((prev) => prev.map((c) => c.id === id ? { ...c, needs_review: false } : c));
+      toast.success("Contenitore verificato");
+    } catch (err: unknown) {
+      toast.error("Errore nella verifica", { description: String(err) });
+    }
+  };
+
   // ─── API config ───────────────────────────────────────────────────────────
 
   const handleSaveApiConfig = async () => {
@@ -1985,8 +1997,17 @@ export default function Config() {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {containers.map((c) => (
-                        <tr key={c.id} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-3 py-1.5 font-medium text-foreground text-sm">{c.name}</td>
+                        <tr key={c.id} className={c.needs_review ? "bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100/60 dark:hover:bg-yellow-900/40 transition-colors border-l-2 border-yellow-400" : "hover:bg-muted/20 transition-colors"}>
+                          <td className="px-3 py-1.5 font-medium text-foreground text-sm">
+                            <div className="flex items-center gap-1.5">
+                              {c.name}
+                              {c.needs_review && (
+                                <span className="text-[10px] font-semibold px-1 py-px rounded bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200 shrink-0">
+                                  DA VERIF.
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-3 py-1.5 text-xs font-mono text-muted-foreground">
                             {c.volume_ml != null ? `${c.volume_ml} ml` : "—"}
                           </td>
@@ -2003,6 +2024,13 @@ export default function Config() {
                           </td>
                           <td className="px-3 py-1.5">
                             <div className="flex items-center justify-end gap-1">
+                              {c.needs_review && (
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-yellow-600 hover:text-green-600"
+                                  title="Segna come verificato"
+                                  onClick={() => handleApproveContainer(c.id)}>
+                                  <ShieldCheck className="h-3 w-3" />
+                                </Button>
+                              )}
                               <Button variant="ghost" size="icon" className="h-6 w-6"
                                 onClick={() => { setEditingContainer(c); setContainerDialogOpen(true); }}>
                                 <Edit2 className="h-3 w-3" />
