@@ -318,7 +318,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                       {pc.label}
                     </Badge>
                   </td>
-                  <td className="px-3 py-1.5">
+                  <td className={`px-3 py-1.5 ${p.drugCatalogId == null ? "bg-amber-50 dark:bg-amber-950/30" : ""}`}>
                     <p className="font-medium text-foreground">{p.drug}</p>
                     {p.labelData.dosage && (
                       <p className="text-xs text-muted-foreground mt-0.5">{p.labelData.dosage}</p>
@@ -328,12 +328,12 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                         <LinkIcon className="h-2.5 w-2.5" />{p.drugCatalogName ?? "catalogo"}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 mt-0.5" title="Farmaco non associato al catalogo">
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
                         <Unlink className="h-2.5 w-2.5" />no catalogo
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-1.5">
+                  <td className={`px-3 py-1.5 ${p.containerCatalogId == null ? "bg-amber-50 dark:bg-amber-950/30" : ""}`}>
                     {p.labelData.solvent ? (
                       <p className="text-sm font-medium text-foreground">{p.labelData.solvent}</p>
                     ) : (
@@ -349,7 +349,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
                         <LinkIcon className="h-2.5 w-2.5" />{p.containerCatalogName ?? "catalogo"}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 mt-0.5" title="Contenitore non associato al catalogo">
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
                         <Unlink className="h-2.5 w-2.5" />no catalogo
                       </span>
                     )}
