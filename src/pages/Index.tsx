@@ -1,4 +1,5 @@
 import { useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { CalendarIcon, CalendarCheck, ClipboardList, Archive, ShieldCheck, ShieldX, List } from "lucide-react";
@@ -20,6 +21,26 @@ const todayStr = () => format(new Date(), "yyyy-MM-dd");
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { preparations } = usePreparations();
+
+  const SESSION_KEY = "index_filters";
+
+  // Ripristina i filtri da sessionStorage se l'URL è vuoto
+  useEffect(() => {
+    if (searchParams.toString() === "") {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
+        setSearchParams(new URLSearchParams(saved), { replace: true });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Salva i filtri in sessionStorage ad ogni cambio
+  useEffect(() => {
+    if (searchParams.toString()) {
+      sessionStorage.setItem(SESSION_KEY, searchParams.toString());
+    }
+  }, [searchParams]);
 
   const tab = searchParams.get("tab") === "archivio" ? "archivio" : "da-valutare";
 

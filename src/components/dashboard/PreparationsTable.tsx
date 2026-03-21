@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight,
@@ -49,14 +49,24 @@ interface PreparationsTableProps {
 const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dateTo }: PreparationsTableProps) => {
   const navigate = useNavigate();
   const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation, reassignCappa, cappe, barcodeSelectedIds, tableSelected: selected, setTableSelected: setSelected } = usePreparations();
-  const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const SS_KEY = `table_state_${mode}`;
+  const saved = (() => { try { return JSON.parse(sessionStorage.getItem(SS_KEY) ?? "{}"); } catch { return {}; } })();
+
+  const [search, setSearch] = useState<string>(saved.search ?? "");
+  const [sortKey, setSortKey] = useState<SortKey | null>(saved.sortKey ?? null);
+  const [sortDir, setSortDir] = useState<SortDir>(saved.sortDir ?? "asc");
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTargetIds, setRejectTargetIds] = useState<string[]>([]);
   const [rejectDefaultReason, setRejectDefaultReason] = useState<import("@/context/PreparationsContext").RejectionReason | undefined>(undefined);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState<number>(saved.currentPage ?? 1);
   const pageSize = 10;
+
+  const persistState = useCallback(() => {
+    sessionStorage.setItem(SS_KEY, JSON.stringify({ search, sortKey, sortDir, currentPage }));
+  }, [SS_KEY, search, sortKey, sortDir, currentPage]);
+
+  useEffect(() => { persistState(); }, [persistState]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
