@@ -176,8 +176,7 @@ export default function ProcessConfigTab() {
             {configs.map((cfg) => (
               <tr
                 key={cfg.id}
-                className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                onClick={() => setSelected(cfg)}
+                className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
               >
                 <td className="px-4 py-3 font-medium text-foreground">{cfg.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{cfg.description ?? "—"}</td>
@@ -191,6 +190,9 @@ export default function ProcessConfigTab() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => setSelected(cfg)}>
+                      <GripVertical className="h-3.5 w-3.5" /> Funzioni
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => openEdit(cfg, e)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
