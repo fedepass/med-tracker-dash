@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { extFetch } from "@/lib/apiClient";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2, Loader, AlertTriangle, Clock, Check, X, ArrowRight,
@@ -60,7 +61,18 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
   const [rejectTargetIds, setRejectTargetIds] = useState<string[]>([]);
   const [rejectDefaultReason, setRejectDefaultReason] = useState<import("@/context/PreparationsContext").RejectionReason | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState<number>(saved.currentPage ?? 1);
+  const [assignmentStrategy, setAssignmentStrategy] = useState<string>("urgency");
   const pageSize = 10;
+
+  const strategyFetched = useRef(false);
+  useEffect(() => {
+    if (strategyFetched.current) return;
+    strategyFetched.current = true;
+    extFetch("/config/assignment")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.strategy) setAssignmentStrategy(d.strategy); })
+      .catch(() => {});
+  }, []);
 
   const persistState = useCallback(() => {
     sessionStorage.setItem(SS_KEY, JSON.stringify({ search, sortKey, sortDir, currentPage }));
@@ -110,7 +122,23 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
   }, [search, statusFilter, validationFilter, preparations, mode, dateFrom, dateTo]);
 
   const sorted = useMemo(() => {
-    if (!sortKey) return filtered;
+    if (!sortKey) {
+      // Default order driven by assignment strategy
+      return [...filtered].sort((a, b) => {
+        switch (assignmentStrategy) {
+          case "urgency":
+            return priorityOrder[a.priority] - priorityOrder[b.priority]
+              || a.requestedAt.localeCompare(b.requestedAt);
+          case "lifo":
+            return b.requestedAt.localeCompare(a.requestedAt);
+          case "fifo":
+          case "round_robin":
+          case "load_balance":
+          default:
+            return a.requestedAt.localeCompare(b.requestedAt);
+        }
+      });
+    }
     return [...filtered].sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
@@ -125,7 +153,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [filtered, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir, assignmentStrategy]);
 
   // Pin all selected rows at top (barcode or manual), only in active mode
   const pinnedIds = mode === "active" ? sorted.filter((p) => selected.has(p.id)).map((p) => p.id) : [];
