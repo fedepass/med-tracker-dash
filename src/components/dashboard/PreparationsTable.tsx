@@ -69,8 +69,8 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
   const [rejectTargetIds, setRejectTargetIds] = useState<string[]>([]);
   const [rejectDefaultReason, setRejectDefaultReason] = useState<import("@/context/PreparationsContext").RejectionReason | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState<number>(saved.currentPage ?? 1);
+  const [pageSize, setPageSize] = useState<number>(saved.pageSize ?? 10);
   const [assignmentStrategy, setAssignmentStrategy] = useState<string>("urgency");
-  const pageSize = 10;
 
   const strategyFetched = useRef(false);
   useEffect(() => {
@@ -83,8 +83,8 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
   }, []);
 
   const persistState = useCallback(() => {
-    sessionStorage.setItem(SS_KEY, JSON.stringify({ search, sortKey, sortDir, currentPage }));
-  }, [SS_KEY, search, sortKey, sortDir, currentPage]);
+    sessionStorage.setItem(SS_KEY, JSON.stringify({ search, sortKey, sortDir, currentPage, pageSize }));
+  }, [SS_KEY, search, sortKey, sortDir, currentPage, pageSize]);
 
   useEffect(() => { persistState(); }, [persistState]);
 
@@ -580,9 +580,20 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
 
       {/* Footer / Pagination */}
       <div className="flex flex-col items-center justify-between gap-3 border-t border-border px-5 py-3 sm:flex-row">
-        <p className="text-xs text-muted-foreground">
-          Mostrando {(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, displayData.length)} di {displayData.length} preparazioni
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-muted-foreground">
+            Mostrando {(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, displayData.length)} di {displayData.length} preparazioni
+          </p>
+          <select
+            value={pageSize}
+            onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+            className="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            {[10, 20, 50, 100].map((n) => (
+              <option key={n} value={n}>{n} righe</option>
+            ))}
+          </select>
+        </div>
         <div className="flex items-center gap-1">
           <button
             disabled={safeCurrentPage <= 1}
