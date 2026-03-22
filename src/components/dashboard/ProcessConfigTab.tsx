@@ -63,6 +63,7 @@ function categoryLabel(c: string | null) {
 export default function ProcessConfigTab() {
   const [configs, setConfigs] = useState<ProcessConfig[]>([]);
   const [selected, setSelected] = useState<ProcessConfig | null>(null);
+  const [showFunctions, setShowFunctions] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ProcessConfig | null>(null);
   const [formName, setFormName] = useState("");
@@ -134,6 +135,10 @@ export default function ProcessConfigTab() {
     );
   }
 
+  if (showFunctions) {
+    return <FunctionsCatalogView onBack={() => setShowFunctions(false)} />;
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -143,9 +148,14 @@ export default function ProcessConfigTab() {
             Definisci quali funzioni eseguire (e in quale ordine) per ogni tipo di processo di preparazione.
           </p>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> Nuova configurazione
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowFunctions(true)}>
+            <GripVertical className="h-4 w-4" /> Catalogo funzioni
+          </Button>
+          <Button size="sm" className="gap-1.5" onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Nuova configurazione
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border overflow-hidden">
@@ -195,8 +205,6 @@ export default function ProcessConfigTab() {
         </table>
       </div>
 
-      <FunctionsCatalogSection />
-
       {/* Create / Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
@@ -231,7 +239,7 @@ export default function ProcessConfigTab() {
 
 // ── Functions catalog management ───────────────────────────────────────────────
 
-function FunctionsCatalogSection() {
+function FunctionsCatalogView({ onBack }: { onBack: () => void }) {
   const [functions, setFunctions] = useState<FunctionEntry[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<FunctionEntry | null>(null);
@@ -241,7 +249,6 @@ function FunctionsCatalogSection() {
   const [formCategory, setFormCategory] = useState("farmaco");
   const [formEnabled, setFormEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [open, setOpen] = useState(false);
 
   const load = useCallback(() => {
     extFetch("/config/functions-catalog")
@@ -250,7 +257,7 @@ function FunctionsCatalogSection() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => { if (open) load(); }, [open, load]);
+  useEffect(() => { load(); }, [load]);
 
   function openCreate() {
     setEditTarget(null);
@@ -314,70 +321,66 @@ function FunctionsCatalogSection() {
   const extraCats = Array.from(new Set(functions.map((f) => f.category ?? "").filter((c) => c && !CATEGORY_OPTIONS.includes(c))));
 
   return (
-    <div className="rounded-xl border border-border bg-card">
-      <button
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <div>
-          <span className="text-sm font-semibold text-foreground">Catalogo funzioni</span>
-          <span className="ml-2 text-xs text-muted-foreground">({functions.length || "—"} funzioni)</span>
-        </div>
-        <span className="text-xs text-muted-foreground">{open ? "Nascondi" : "Mostra"}</span>
-      </button>
-
-      {open && (
-        <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
-          <div className="flex justify-end">
-            <button
-              onClick={openCreate}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" /> Nuova funzione
-            </button>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h3 className="text-base font-semibold text-foreground">Catalogo funzioni</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{functions.length} funzioni disponibili</p>
           </div>
-
-          {[...cats, ...extraCats].map((cat) => (
-            <div key={cat}>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
-                {categoryLabel(cat)}
-              </p>
-              <div className="rounded-lg border border-border overflow-hidden">
-                <table className="w-full text-sm">
-                  <tbody className="divide-y divide-border">
-                    {functions.filter((f) => (f.category ?? "") === cat).map((fn) => (
-                      <tr key={fn.id} className={`transition-colors ${fn.enabled ? "hover:bg-muted/20" : "opacity-50 hover:bg-muted/20"}`}>
-                        <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground w-48">{fn.code}</td>
-                        <td className="px-3 py-1.5 font-medium text-foreground">{fn.name}</td>
-                        <td className="px-3 py-1.5 text-xs text-muted-foreground">{fn.description ?? "—"}</td>
-                        <td className="px-3 py-1.5 w-24 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={(e) => handleToggle(fn, e)}
-                              title={fn.enabled ? "Disabilita" : "Abilita"}
-                              className="text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              {fn.enabled
-                                ? <ToggleRight className="h-4 w-4 text-primary" />
-                                : <ToggleLeft className="h-4 w-4" />}
-                            </button>
-                            <button onClick={(e) => openEdit(fn, e)} className="text-muted-foreground hover:text-foreground transition-colors p-0.5">
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                            <button onClick={(e) => handleDelete(fn, e)} className="text-muted-foreground hover:text-destructive transition-colors p-0.5">
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
         </div>
+        <Button size="sm" className="gap-1.5" onClick={openCreate}>
+          <Plus className="h-4 w-4" /> Nuova funzione
+        </Button>
+      </div>
+
+      {/* Function tables by category */}
+      {[...cats, ...extraCats].length === 0 && (
+        <p className="text-sm text-muted-foreground italic text-center py-8">Nessuna funzione presente.</p>
       )}
+      {[...cats, ...extraCats].map((cat) => (
+        <div key={cat}>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+            {categoryLabel(cat)}
+          </p>
+          <div className="rounded-xl border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-border">
+                {functions.filter((f) => (f.category ?? "") === cat).map((fn) => (
+                  <tr key={fn.id} className={`transition-colors ${fn.enabled ? "hover:bg-muted/20" : "opacity-50 hover:bg-muted/20"}`}>
+                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground w-48">{fn.code}</td>
+                    <td className="px-3 py-2 font-medium text-foreground">{fn.name}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{fn.description ?? "—"}</td>
+                    <td className="px-3 py-2 w-28 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={(e) => handleToggle(fn, e)}
+                          title={fn.enabled ? "Disabilita" : "Abilita"}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {fn.enabled
+                            ? <ToggleRight className="h-4 w-4 text-primary" />
+                            : <ToggleLeft className="h-4 w-4" />}
+                        </button>
+                        <button onClick={(e) => openEdit(fn, e)} className="text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={(e) => handleDelete(fn, e)} className="text-muted-foreground hover:text-destructive transition-colors p-0.5">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
