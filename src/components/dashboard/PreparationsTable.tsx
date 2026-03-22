@@ -39,6 +39,14 @@ type SortDir = "asc" | "desc";
 const priorityOrder: Record<Priority, number> = { alta: 0, media: 1, bassa: 2 };
 const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3 };
 
+// requestedAt is formatted as "dd/mm/yyyy HH:MM" — parse to epoch for correct chronological comparison
+function parseRequestedAt(s: string | null): number {
+  if (!s) return 0;
+  const [datePart, timePart] = s.split(" ");
+  const [d, m, y] = datePart.split("/");
+  return new Date(`${y}-${m}-${d}T${timePart ?? "00:00"}:00`).getTime();
+}
+
 interface PreparationsTableProps {
   mode: "active" | "archived";
   statusFilter?: Status | null;
@@ -128,14 +136,14 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
         switch (assignmentStrategy) {
           case "urgency":
             return priorityOrder[a.priority] - priorityOrder[b.priority]
-              || a.requestedAt.localeCompare(b.requestedAt);
+              || parseRequestedAt(a.requestedAt) - parseRequestedAt(b.requestedAt);
           case "lifo":
-            return b.requestedAt.localeCompare(a.requestedAt);
+            return parseRequestedAt(b.requestedAt) - parseRequestedAt(a.requestedAt);
           case "fifo":
           case "round_robin":
           case "load_balance":
           default:
-            return a.requestedAt.localeCompare(b.requestedAt);
+            return parseRequestedAt(a.requestedAt) - parseRequestedAt(b.requestedAt);
         }
       });
     }
@@ -149,7 +157,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
         case "dispensed": cmp = a.dispensed - b.dispensed; break;
         case "errorRate": cmp = a.errorRate - b.errorRate; break;
         case "executor": cmp = (a.executor ?? "").localeCompare(b.executor ?? ""); break;
-        case "requestedAt": cmp = a.requestedAt.localeCompare(b.requestedAt); break;
+        case "requestedAt": cmp = parseRequestedAt(a.requestedAt) - parseRequestedAt(b.requestedAt); break;
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
