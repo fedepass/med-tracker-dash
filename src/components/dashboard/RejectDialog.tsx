@@ -63,18 +63,20 @@ const RejectDialog = ({ open, preparationIds, defaultReason, onConfirm, onCancel
             Seleziona il motivo del rifiuto per {preparationIds.length > 1 ? `${preparationIds.length} preparazioni` : preparationIds[0]}.
           </DialogDescription>
         </DialogHeader>
-        <Select value={reason} onValueChange={setReason}>
-          <SelectTrigger>
-            <SelectValue placeholder="Seleziona motivo..." />
-          </SelectTrigger>
-          <SelectContent>
-            {reasons.map((r) => (
-              <SelectItem key={r.id} value={r.reason}>
-                {r.reason}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="py-2">
+          <Select value={reason} onValueChange={setReason}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleziona motivo..." />
+            </SelectTrigger>
+            <SelectContent className="z-[200]">
+              {reasons.map((r) => (
+                <SelectItem key={r.id} value={r.reason}>
+                  {r.reason}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>
             Annulla
