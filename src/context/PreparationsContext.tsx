@@ -12,13 +12,6 @@ function resolvePhoto(p: { type: string; label: string; assetKey?: string; barco
 }
 
 /** Combina una data (YYYY-MM-DD) con un orario (HH:MM o HH:MM:SS) → "DD/MM/YYYY HH:MM" */
-function formatDT(date: string | null | undefined, time: string | null | undefined): string | null {
-  if (!date || !time) return null;
-  const d = String(date).slice(0, 10);
-  const t = String(time).slice(0, 5);
-  const [y, mo, dd] = d.split("-");
-  return `${dd}/${mo}/${y} ${t}`;
-}
 
 /** Formatta un timestamp ISO → "DD/MM/YYYY HH:MM" */
 function formatTS(ts: string | null | undefined): string | null {
@@ -49,8 +42,8 @@ function mapPreparation(r: any): Preparation {
     specificGravity:  r.specific_gravity != null ? Number(r.specific_gravity) : null,
     date:             String(r.date).slice(0, 10),
     requestedAt:      formatTS(r.created_at),
-    startedAt:        formatDT(r.date, r.started_at),
-    finishedAt:       formatDT(r.date, r.finished_at),
+    startedAt:        formatTS(r.started_at),
+    finishedAt:       formatTS(r.finished_at),
     hl7PrescriptionId: r.hl7_prescription_id ?? r.hl7PrescriptionId ?? null,
     // API piatta: executor_name/cappa_name; oppure oggetto annidato (formato legacy)
     executor:         r.executor_name ?? (typeof r.executor === "object" && r.executor !== null ? r.executor.name : r.executor) ?? null,
