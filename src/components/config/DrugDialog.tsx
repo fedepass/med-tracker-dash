@@ -20,34 +20,7 @@ import {
 } from "@/components/ui/select";
 import { extFetch } from "@/lib/apiClient";
 import type { Drug, ProcessConfig } from "./types";
-
-interface LookupResult {
-  name: string;
-  code: string | null;
-  aic_code?: string | null;
-  category: string | null;
-  description?: string | null;
-  company?: string | null;
-  source?: string;
-}
-
-interface AicPresentation {
-  codice_aic: string;
-  denominazione: string;
-  descrizione: string;
-  ragione_sociale: string;
-  dosaggio_valore: number | null;
-  dosaggio_unita: string | null;
-  volume_soluzione_ml: number | null;
-  concentrazione: string | null;
-  forma_farmaceutica: string | null;
-  forma_breve: string | null;
-  via_somministrazione: string | null;
-  is_polvere: boolean;
-  volume_solvente_ml: number | null;
-  quantita_confezione: number | null;
-  unita_confezione: string | null;
-}
+import { useDrugLookup, type LookupResult, type AicPresentation } from "./useDrugLookup";
 
 export interface DrugDialogProps {
   open: boolean;
@@ -60,29 +33,31 @@ export interface DrugDialogProps {
 
 export function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugDialogProps) {
   const [processConfigs, setProcessConfigs] = useState<ProcessConfig[]>([]);
-  const [name,                    setName]                    = useState(initial?.name ?? "");
-  const [code,                    setCode]                    = useState(initial?.code ?? "");
-  const [aicCode,                 setAicCode]                 = useState(initial?.aic_code ?? "");
-  const [category,                setCategory]                = useState(initial?.category ?? "");
-  const [isPowder,                setIsPowder]                = useState(initial?.is_powder ?? false);
-  const [diluent,                 setDiluent]                 = useState(initial?.diluent ?? "");
-  const [reconVolume,             setReconVolume]             = useState(initial?.reconstitution_volume?.toString() ?? "");
-  const [reconVolumeUnit,         setReconVolumeUnit]         = useState(initial?.reconstitution_volume_unit ?? "ml");
-  const [specificGravity,         setSpecificGravity]         = useState(initial?.specific_gravity?.toString() ?? "");
-  const [vialVolume,              setVialVolume]              = useState(initial?.vial_volume?.toString() ?? "");
-  const [processConfigId,         setProcessConfigId]         = useState<string>(initial?.process_config_id?.toString() ?? "");
-  const [lookupLoading,           setLookupLoading]           = useState(false);
-  const [lookupResults,           setLookupResults]           = useState<LookupResult[]>([]);
-  const [lookupError,             setLookupError]             = useState<string | null>(null);
-  const [catMode,                 setCatMode]                 = useState<"select" | "new">("select");
-  const [aicPresentations,        setAicPresentations]        = useState<AicPresentation[]>([]);
-  const [aicPresLoading,          setAicPresLoading]          = useState(false);
-  const [medicinaliData,          setMedicinaliData]          = useState<{
-    denominazione: string; forma_farmaceutica: string; is_polvere: boolean;
-    volume_ml: number | null; codice_atc: string | null; descrizione_atc: string | null;
-    azienda: string; denominazione_package: string;
-  } | null>(null);
-  const [medicinaliLoading,       setMedicinaliLoading]       = useState(false);
+  const [name,            setName]            = useState(initial?.name ?? "");
+  const [code,            setCode]            = useState(initial?.code ?? "");
+  const [aicCode,         setAicCode]         = useState(initial?.aic_code ?? "");
+  const [category,        setCategory]        = useState(initial?.category ?? "");
+  const [isPowder,        setIsPowder]        = useState(initial?.is_powder ?? false);
+  const [diluent,         setDiluent]         = useState(initial?.diluent ?? "");
+  const [reconVolume,     setReconVolume]     = useState(initial?.reconstitution_volume?.toString() ?? "");
+  const [reconVolumeUnit, setReconVolumeUnit] = useState(initial?.reconstitution_volume_unit ?? "ml");
+  const [specificGravity, setSpecificGravity] = useState(initial?.specific_gravity?.toString() ?? "");
+  const [vialVolume,      setVialVolume]      = useState(initial?.vial_volume?.toString() ?? "");
+  const [processConfigId, setProcessConfigId] = useState<string>(initial?.process_config_id?.toString() ?? "");
+  const [catMode,         setCatMode]         = useState<"select" | "new">("select");
+
+  const {
+    lookupResults,
+    lookupLoading,
+    lookupError,
+    aicPresentations,
+    aicPresLoading,
+    medicinaliData,
+    medicinaliLoading,
+    handleLookup,
+    clearLookupResults,
+    clearLookupError,
+  } = useDrugLookup({ open, name, aicCode });
 
   useEffect(() => {
     if (open) {
@@ -98,67 +73,16 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
       setSpecificGravity(initial?.specific_gravity?.toString() ?? "");
       setVialVolume(initial?.vial_volume?.toString() ?? "");
       setProcessConfigId(initial?.process_config_id?.toString() ?? "");
-      setLookupResults([]);
-      setLookupError(null);
-      setAicPresentations([]);
-      setMedicinaliData(null);
+      clearLookupResults();
+      clearLookupError();
       setCatMode(initCat && !categories.includes(initCat) ? "new" : "select");
       extFetch("/config/process-configs")
         .then((r) => r.ok ? r.json() : [])
         .then((data) => setProcessConfigs(Array.isArray(data) ? data.map(({ id, name }: { id: number; name: string }) => ({ id, name })) : []))
         .catch(() => {});
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
-
-  // Fetch live da AIFA Medicinali quando AIC è 6+ cifre
-  useEffect(() => {
-    const digits = aicCode.replace(/\D/g, "");
-    if (!open || digits.length < 6) { setMedicinaliData(null); return; }
-    const timer = setTimeout(async () => {
-      setMedicinaliLoading(true);
-      try {
-        const res = await extFetch(`/config/drug-lookup/medicinali-live?aic=${encodeURIComponent(digits)}`);
-        if (res.ok) setMedicinaliData(await res.json());
-        else setMedicinaliData(null);
-      } catch { setMedicinaliData(null); } finally {
-        setMedicinaliLoading(false);
-      }
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [aicCode, open]);
-
-  // Debounced AIC presentations fetch
-  useEffect(() => {
-    if (!open || name.trim().length < 3) { setAicPresentations([]); return; }
-    const timer = setTimeout(async () => {
-      setAicPresLoading(true);
-      try {
-        const res = await extFetch(`/config/drug-lookup/aic-presentations?q=${encodeURIComponent(name.trim())}`);
-        if (res.ok) setAicPresentations(await res.json());
-      } catch { /* silenzioso */ } finally {
-        setAicPresLoading(false);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [name, open]);
-
-  const handleLookup = async () => {
-    if (!name.trim()) return;
-    setLookupLoading(true);
-    setLookupResults([]);
-    setLookupError(null);
-    try {
-      const res = await extFetch(`/config/drug-lookup?name=${encodeURIComponent(name.trim())}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-      setLookupResults(data);
-      if (!data.length) setLookupError("Nessun risultato trovato");
-    } catch (err: unknown) {
-      setLookupError(err instanceof Error ? err.message : "Errore nella ricerca");
-    } finally {
-      setLookupLoading(false);
-    }
-  };
 
   const applyResult = (r: LookupResult) => {
     setName(r.name);
@@ -168,7 +92,7 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
     setCategory(cat);
     if (cat && !categories.includes(cat)) setCatMode("new");
     else setCatMode("select");
-    setLookupResults([]);
+    clearLookupResults();
   };
 
   const applyPresentation = (p: AicPresentation) => {
@@ -227,7 +151,7 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
                   id="drug-name"
                   placeholder="Es. Vancomicina, Methotrexate"
                   value={name}
-                  onChange={(e) => { setName(e.target.value); setLookupResults([]); setLookupError(null); }}
+                  onChange={(e) => { setName(e.target.value); clearLookupResults(); clearLookupError(); }}
                   onKeyDown={(e) => { if (e.key === "Enter") handleLookup(); }}
                   className="flex-1"
                 />
