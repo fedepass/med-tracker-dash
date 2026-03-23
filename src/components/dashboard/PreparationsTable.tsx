@@ -70,7 +70,9 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
   const [rejectDefaultReason, setRejectDefaultReason] = useState<import("@/context/PreparationsContext").RejectionReason | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState<number>(saved.currentPage ?? 1);
   const [pageSize, setPageSize] = useState<number>(saved.pageSize ?? 10);
-  const [assignmentStrategy, setAssignmentStrategy] = useState<string>("urgency");
+  const [assignmentSteps, setAssignmentSteps] = useState<{ strategy: string; logic_op: string; enabled: boolean }[]>(
+    [{ strategy: "urgency", logic_op: "AND", enabled: true }]
+  );
 
   const strategyFetched = useRef(false);
   useEffect(() => {
@@ -78,7 +80,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
     strategyFetched.current = true;
     extFetch("/config/assignment")
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.strategy) setAssignmentStrategy(d.strategy); })
+      .then((d) => { if (d?.steps?.length) setAssignmentSteps(d.steps); })
       .catch(() => {});
   }, []);
 
@@ -131,20 +133,21 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
 
   const sorted = useMemo(() => {
     if (!sortKey) {
-      // Default order driven by assignment strategy
+      const activeSteps = assignmentSteps.filter((s) => s.enabled);
       return [...filtered].sort((a, b) => {
-        switch (assignmentStrategy) {
-          case "urgency":
-            return priorityOrder[a.priority] - priorityOrder[b.priority]
-              || parseRequestedAt(a.requestedAt) - parseRequestedAt(b.requestedAt);
-          case "lifo":
-            return parseRequestedAt(b.requestedAt) - parseRequestedAt(a.requestedAt);
-          case "fifo":
-          case "round_robin":
-          case "load_balance":
-          default:
-            return parseRequestedAt(a.requestedAt) - parseRequestedAt(b.requestedAt);
+        for (const step of activeSteps) {
+          let cmp = 0;
+          switch (step.strategy) {
+            case "urgency": cmp = priorityOrder[a.priority] - priorityOrder[b.priority]; break;
+            case "lifo":    cmp = parseRequestedAt(b.requestedAt) - parseRequestedAt(a.requestedAt); break;
+            case "fifo":
+            case "round_robin":
+            case "load_balance":
+            default:        cmp = parseRequestedAt(a.requestedAt) - parseRequestedAt(b.requestedAt); break;
+          }
+          if (cmp !== 0) return cmp;
         }
+        return 0;
       });
     }
     return [...filtered].sort((a, b) => {
@@ -161,7 +164,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [filtered, sortKey, sortDir, assignmentStrategy]);
+  }, [filtered, sortKey, sortDir, assignmentSteps]);
 
   // Pin all selected rows at top (barcode or manual), only in active mode
   const pinnedIds = mode === "active" ? sorted.filter((p) => selected.has(p.id)).map((p) => p.id) : [];

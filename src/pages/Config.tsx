@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Settings, Plus, Trash2, Edit2, Check, X, ShieldCheck, Zap, Clock, RefreshCw, Scale, Pill, Search } from "lucide-react";
+import { Settings, Plus, Trash2, Edit2, Check, X, ShieldCheck, Zap, Clock, RefreshCw, Scale, Pill, Search, ArrowUp, ArrowDown } from "lucide-react";
 import Navbar from "@/components/dashboard/Navbar";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +33,11 @@ import ProcessConfigTab from "@/components/dashboard/ProcessConfigTab";
 type Tipologia = "biologica" | "chimica" | "sterile" | "custom";
 type RuleType = "excluded" | "mandatory";
 type AssignmentStrategy = "fifo" | "lifo" | "urgency" | "round_robin" | "load_balance";
+interface AssignmentStepConfig {
+  strategy: AssignmentStrategy;
+  logic_op: "AND" | "OR";
+  enabled: boolean;
+}
 
 interface DrugRule {
   id: number;
@@ -1192,6 +1197,9 @@ export default function Config() {
   const [loadingCappe, setLoadingCappe] = useState(true);
   const [strategy, setStrategy] = useState<AssignmentStrategy>("urgency");
   const [savingStrategy, setSavingStrategy] = useState(false);
+  const [assignmentSteps, setAssignmentSteps] = useState<AssignmentStepConfig[]>([
+    { strategy: "urgency", logic_op: "AND", enabled: true },
+  ]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCappa, setEditingCappa] = useState<Cappa | null>(null);
@@ -1252,8 +1260,11 @@ export default function Config() {
     try {
       const res = await extFetch(`/config/assignment`);
       if (!res.ok) return;
-      const data: { strategy: AssignmentStrategy } = await res.json();
-      setStrategy(data.strategy);
+      const data: { steps: AssignmentStepConfig[] } = await res.json();
+      if (data.steps?.length) {
+        setAssignmentSteps(data.steps);
+        setStrategy(data.steps[0].strategy as AssignmentStrategy);
+      }
     } catch {
       // silenzioso — default mantenuto
     }
@@ -1573,14 +1584,20 @@ export default function Config() {
   // ─── Assignment strategy ───────────────────────────────────────────────────
 
   const handleSaveStrategy = async () => {
+    if (assignmentSteps.length === 0) {
+      toast.error("Aggiungi almeno un criterio");
+      return;
+    }
     setSavingStrategy(true);
     try {
       const res = await extFetch(`/config/assignment`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategy }),
+        body: JSON.stringify({ steps: assignmentSteps }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.steps?.length) setAssignmentSteps(data.steps);
       toast.success("Strategia di assegnazione salvata");
     } catch (err: unknown) {
       toast.error("Errore nel salvataggio", { description: String(err) });
@@ -2056,43 +2073,121 @@ export default function Config() {
 
           {/* ─── Tab: Strategia assegnazione ─── */}
           <TabsContent value="assignment">
-            <div className="max-w-2xl space-y-4">
+            <div className="max-w-2xl space-y-5">
               <p className="text-sm text-muted-foreground">
-                Scegli la logica con cui le prescrizioni HL7 vengono assegnate alle cappe al momento dell'importazione.
+                Definisci la sequenza di criteri di ordinamento. I criteri vengono applicati in ordine: se il primo non distingue due preparazioni, si applica il secondo, e così via.
               </p>
-              <div className="space-y-3">
-                {STRATEGIES.map(({ value, label, description, Icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setStrategy(value)}
-                    className={cn(
-                      "w-full text-left flex items-start gap-4 p-4 rounded-lg border-2 transition-all",
-                      strategy === value
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/40 hover:bg-muted/30"
-                    )}
-                  >
-                    <div className={cn(
-                      "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
-                      strategy === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+
+              {/* Step list */}
+              <div className="space-y-2">
+                {assignmentSteps.map((step, idx) => {
+                  const meta = STRATEGIES.find((s) => s.value === step.strategy)!;
+                  return (
+                    <div key={idx} className={cn(
+                      "flex items-center gap-3 rounded-lg border border-border px-3 py-2.5 transition-colors",
+                      step.enabled ? "bg-card" : "bg-muted/30 opacity-60"
                     )}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{label}</span>
-                        {strategy === value && (
-                          <Badge variant="default" className="text-[10px] px-1.5 py-0">Attiva</Badge>
-                        )}
+                      {/* Order badge */}
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {idx + 1}
+                      </span>
+
+                      {/* Logic op toggle (not shown for first step) */}
+                      {idx > 0 ? (
+                        <button
+                          onClick={() => setAssignmentSteps((prev) => prev.map((s, i) =>
+                            i === idx ? { ...s, logic_op: s.logic_op === "AND" ? "OR" : "AND" } : s
+                          ))}
+                          className={cn(
+                            "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold transition-colors",
+                            step.logic_op === "AND"
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                              : "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
+                          )}
+                          title="Clicca per cambiare AND / OR"
+                        >
+                          {step.logic_op}
+                        </button>
+                      ) : (
+                        <span className="w-8 shrink-0" />
+                      )}
+
+                      {/* Strategy icon */}
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                        <meta.Icon className="h-3.5 w-3.5" />
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+
+                      {/* Strategy selector */}
+                      <select
+                        value={step.strategy}
+                        onChange={(e) => setAssignmentSteps((prev) => prev.map((s, i) =>
+                          i === idx ? { ...s, strategy: e.target.value as AssignmentStrategy } : s
+                        ))}
+                        className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        {STRATEGIES.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label} — {s.description}</option>
+                        ))}
+                      </select>
+
+                      {/* Enabled toggle */}
+                      <input
+                        type="checkbox"
+                        checked={step.enabled}
+                        onChange={(e) => setAssignmentSteps((prev) => prev.map((s, i) =>
+                          i === idx ? { ...s, enabled: e.target.checked } : s
+                        ))}
+                        title="Abilita/disabilita questo criterio"
+                        className="h-4 w-4 shrink-0 cursor-pointer"
+                      />
+
+                      {/* Move up/down */}
+                      <div className="flex shrink-0 flex-col gap-0.5">
+                        <button
+                          disabled={idx === 0}
+                          onClick={() => setAssignmentSteps((prev) => {
+                            const next = [...prev]; [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]; return next;
+                          })}
+                          className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          disabled={idx === assignmentSteps.length - 1}
+                          onClick={() => setAssignmentSteps((prev) => {
+                            const next = [...prev]; [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]]; return next;
+                          })}
+                          className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {/* Delete */}
+                      <button
+                        onClick={() => setAssignmentSteps((prev) => prev.filter((_, i) => i !== idx))}
+                        className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
-              <div className="pt-2">
-                <Button onClick={handleSaveStrategy} disabled={savingStrategy}>
+
+              {/* Add criterion */}
+              <button
+                onClick={() => setAssignmentSteps((prev) => [
+                  ...prev,
+                  { strategy: "fifo", logic_op: "AND", enabled: true },
+                ])}
+                className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
+              >
+                <Plus className="h-4 w-4" /> Aggiungi criterio
+              </button>
+
+              <div className="pt-1">
+                <Button onClick={handleSaveStrategy} disabled={savingStrategy || assignmentSteps.length === 0}>
                   {savingStrategy ? "Salvataggio..." : "Salva strategia"}
                 </Button>
               </div>
