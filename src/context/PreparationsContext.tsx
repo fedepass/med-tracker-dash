@@ -67,6 +67,7 @@ function mapPreparation(r: any): Preparation {
       notes:       r.notes         ?? label.notes        ?? "",
     },
     photos: (r.photos ?? []).map(resolvePhoto),
+    drugCategory:         r.drug_category           ?? null,
     drugCatalogId:        r.drug_catalog_id        ?? null,
     containerCatalogId:   r.container_catalog_id   ?? null,
     drugCatalogName:      r.drug_catalog_name      ?? null,

@@ -54,6 +54,7 @@ export interface Preparation {
   finishedAt: string | null;
   photos: ComponentPhoto[];
   labelData: LabelData;
+  drugCategory: string | null;
   drugCatalogId: number | null;
   containerCatalogId: number | null;
   drugCatalogName: string | null;

@@ -73,15 +73,19 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
   const [assignmentSteps, setAssignmentSteps] = useState<{ strategy: string; logic_op: string; enabled: boolean }[]>(
     [{ strategy: "urgency", logic_op: "AND", enabled: true }]
   );
+  const [drugPriorityRules, setDrugPriorityRules] = useState<{ rule_type: string; value: string; priority: number; enabled: boolean }[]>([]);
 
   const strategyFetched = useRef(false);
   useEffect(() => {
     if (strategyFetched.current) return;
     strategyFetched.current = true;
-    extFetch("/config/assignment")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.steps?.length) setAssignmentSteps(d.steps); })
-      .catch(() => {});
+    Promise.all([
+      extFetch("/config/assignment").then((r) => r.ok ? r.json() : null),
+      extFetch("/config/drug-priority-rules").then((r) => r.ok ? r.json() : []),
+    ]).then(([steps, rules]) => {
+      if (steps?.steps?.length) setAssignmentSteps(steps.steps);
+      if (Array.isArray(rules)) setDrugPriorityRules(rules);
+    }).catch(() => {});
   }, []);
 
   const persistState = useCallback(() => {
@@ -140,6 +144,19 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
           switch (step.strategy) {
             case "urgency": cmp = priorityOrder[a.priority] - priorityOrder[b.priority]; break;
             case "lifo":    cmp = parseRequestedAt(b.requestedAt) - parseRequestedAt(a.requestedAt); break;
+            case "drug_priority": {
+              const activeRules = drugPriorityRules.filter((r) => r.enabled);
+              const rank = (p: typeof a) => {
+                const matched = activeRules.filter((r) =>
+                  r.rule_type === "drug"
+                    ? p.drug?.toLowerCase().includes(r.value.toLowerCase())
+                    : (p.drugCategory ?? "").toLowerCase().startsWith(r.value.toLowerCase())
+                );
+                return matched.length > 0 ? Math.min(...matched.map((r) => r.priority)) : 9999;
+              };
+              cmp = rank(a) - rank(b);
+              break;
+            }
             case "fifo":
             case "round_robin":
             case "load_balance":
@@ -164,7 +181,7 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [filtered, sortKey, sortDir, assignmentSteps]);
+  }, [filtered, sortKey, sortDir, assignmentSteps, drugPriorityRules]);
 
   // Pin all selected rows at top (barcode or manual), only in active mode
   const pinnedIds = mode === "active" ? sorted.filter((p) => selected.has(p.id)).map((p) => p.id) : [];
