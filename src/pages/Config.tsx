@@ -2117,18 +2117,21 @@ export default function Config() {
                         <meta.Icon className="h-3.5 w-3.5" />
                       </div>
 
-                      {/* Strategy selector */}
-                      <select
-                        value={step.strategy}
-                        onChange={(e) => setAssignmentSteps((prev) => prev.map((s, i) =>
-                          i === idx ? { ...s, strategy: e.target.value as AssignmentStrategy } : s
-                        ))}
-                        className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                      >
-                        {STRATEGIES.map((s) => (
-                          <option key={s.value} value={s.value}>{s.label} — {s.description}</option>
-                        ))}
-                      </select>
+                      {/* Strategy selector + description */}
+                      <div className="flex-1 min-w-0">
+                        <select
+                          value={step.strategy}
+                          onChange={(e) => setAssignmentSteps((prev) => prev.map((s, i) =>
+                            i === idx ? { ...s, strategy: e.target.value as AssignmentStrategy } : s
+                          ))}
+                          className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        >
+                          {STRATEGIES.map((s) => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                          ))}
+                        </select>
+                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{meta.description}</p>
+                      </div>
 
                       {/* Enabled toggle */}
                       <input
