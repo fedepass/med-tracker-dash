@@ -63,6 +63,10 @@ export default {
           "complete-bg": "hsl(var(--status-complete-bg))",
           error: "hsl(var(--status-error))",
           "error-bg": "hsl(var(--status-error-bg))",
+          corretta: "hsl(var(--status-corretta))",
+          "corretta-bg": "hsl(var(--status-corretta-bg))",
+          "warning-dosaggio": "hsl(var(--status-warning-dosaggio))",
+          "warning-dosaggio-bg": "hsl(var(--status-warning-dosaggio-bg))",
         },
         priority: {
           high: "hsl(var(--priority-high))",

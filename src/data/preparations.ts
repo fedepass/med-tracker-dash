@@ -1,97 +1,8 @@
-import photoFlaconePolvere from "@/assets/photo-flacone-polvere.jpg";
-import photoDiluente from "@/assets/photo-diluente-new.jpg";
-import photoSaccaIV from "@/assets/photo-sacca-iv.jpg";
-import photoSiringa from "@/assets/photo-siringa.jpg";
-import photoPreparazioneFinale from "@/assets/photo-preparazione-finale.jpg";
+import { ivPhotos, syringePhotos, todayStr, type Preparation } from "./preparationTypes";
 
-export type Status = "completata" | "esecuzione" | "errore" | "attesa";
-export type ValidationStatus = "validata" | "rifiutata" | null;
-export type Priority = "alta" | "media" | "bassa";
-
-
-export interface ComponentPhoto {
-  type: "farmaco" | "diluente" | "contenitore" | "preparazione";
-  label: string;
-  url: string;
-  barcode?: string;
-}
-
-export interface LabelData {
-  patientName: string;
-  patientId: string;
-  drug: string;
-  dosage: string;
-  route: string;
-  volume: string;
-  solvent: string;
-  preparedBy: string;
-  preparedAt: string;
-  expiresAt: string;
-  lotNumber: string;
-  notes: string;
-}
-
-export interface Preparation {
-  id: string;
-  status: Status;
-  validationStatus: ValidationStatus;
-  priority: Priority;
-  drug: string;
-  form: string;
-  dispensed: number;
-  volumeValue: number | null;
-  dosageValue?: number | null;
-  dosageUnit?: string | null;
-  specificGravity?: number | null;
-  errorRate: number;
-  executor: string | null;
-  executorInitials: string | null;
-  station: string | null;
-  cappaId: number | null;
-  date: string; // YYYY-MM-DD
-  requestedAt: string;
-  startedAt: string | null;
-  finishedAt: string | null;
-  photos: ComponentPhoto[];
-  labelData: LabelData;
-  drugCategory: string | null;
-  drugCatalogId: number | null;
-  containerCatalogId: number | null;
-  drugCatalogName: string | null;
-  containerCatalogName: string | null;
-}
-
-// Photo helpers for consistent usage
-export const photoAssets = {
-  flaconePolvere: photoFlaconePolvere,
-  diluente: photoDiluente,
-  saccaIV: photoSaccaIV,
-  siringa: photoSiringa,
-  preparazioneFinale: photoPreparazioneFinale,
-};
-
-function ivPhotos(drug: string, diluent: string, barcode: string): ComponentPhoto[] {
-  return [
-    { type: "farmaco", label: `${drug} - Flacone polvere liofilizzata`, url: photoFlaconePolvere, barcode },
-    { type: "diluente", label: diluent, url: photoDiluente, barcode: `80${barcode.slice(2)}` },
-    { type: "contenitore", label: "Sacca IV per infusione", url: photoSaccaIV },
-    { type: "preparazione", label: "Preparazione finale - Sacca IV pronta", url: photoPreparazioneFinale },
-  ];
-}
-
-function syringePhotos(drug: string, diluent: string, barcode: string): ComponentPhoto[] {
-  return [
-    { type: "farmaco", label: `${drug} - Flacone polvere liofilizzata`, url: photoFlaconePolvere, barcode },
-    { type: "diluente", label: diluent, url: photoDiluente, barcode: `80${barcode.slice(2)}` },
-    { type: "contenitore", label: "Siringa sterile per preparazione", url: photoSiringa },
-    { type: "preparazione", label: "Preparazione finale - Siringa pronta", url: photoPreparazioneFinale },
-  ];
-}
-
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+// Re-export all types and helpers for backward compatibility with existing imports
+export type { Status, ValidationStatus, Priority, ComponentPhoto, LabelData, Preparation } from "./preparationTypes";
+export { photoAssets } from "./preparationTypes";
 
 export const preparations: Preparation[] = [
   {
@@ -107,6 +18,7 @@ export const preparations: Preparation[] = [
     executor: "L. Bianchi",
     executorInitials: "LB",
     station: "Cappa 1",
+    cappaId: null,
     date: todayStr(),
     requestedAt: "08:30",
     startedAt: "08:45",
@@ -119,12 +31,18 @@ export const preparations: Preparation[] = [
       dosage: "2 g",
       route: "Endovenosa",
       volume: "100 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "L. Bianchi",
       preparedAt: "23/02/2026 09:12",
       expiresAt: "24/02/2026 09:12",
       lotNumber: "LOT-2026-02-2847",
       notes: "Infondere in 30 minuti. Conservare a 2-8°C se non somministrata entro 6h.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2846",
@@ -139,6 +57,7 @@ export const preparations: Preparation[] = [
     executor: "M. Verdi",
     executorInitials: "MV",
     station: "Cappa 2",
+    cappaId: null,
     date: todayStr(),
     requestedAt: "09:15",
     startedAt: "09:30",
@@ -151,12 +70,18 @@ export const preparations: Preparation[] = [
       dosage: "1 g",
       route: "Endovenosa lenta",
       volume: "50 ml",
+      solvent: "Acqua PPI",
       preparedBy: "M. Verdi",
       preparedAt: "In corso",
       expiresAt: "—",
       lotNumber: "LOT-2026-02-2846",
       notes: "Infondere in almeno 60 minuti. Monitorare per Red Man Syndrome.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2845",
@@ -171,6 +96,7 @@ export const preparations: Preparation[] = [
     executor: "G. Neri",
     executorInitials: "GN",
     station: "Cappa 3",
+    cappaId: null,
     date: todayStr(),
     requestedAt: "08:00",
     startedAt: "08:20",
@@ -183,12 +109,18 @@ export const preparations: Preparation[] = [
       dosage: "1 g",
       route: "Endovenosa",
       volume: "50 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "G. Neri",
       preparedAt: "23/02/2026 08:45",
       expiresAt: "23/02/2026 14:45",
       lotNumber: "LOT-2026-02-2845",
       notes: "ATTENZIONE: Errore volume rilevato. Preparazione da rifare.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2844",
@@ -203,6 +135,7 @@ export const preparations: Preparation[] = [
     executor: null,
     executorInitials: null,
     station: null,
+    cappaId: null,
     date: todayStr(),
     requestedAt: "10:00",
     startedAt: null,
@@ -215,12 +148,18 @@ export const preparations: Preparation[] = [
       dosage: "40 mg",
       route: "Endovenosa",
       volume: "10 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "—",
       preparedAt: "In attesa",
       expiresAt: "—",
       lotNumber: "LOT-2026-02-2844",
       notes: "Ricostituire con 10ml NaCl 0.9%. Somministrare in bolo lento (2-15 min).",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2843",
@@ -235,6 +174,7 @@ export const preparations: Preparation[] = [
     executor: "L. Bianchi",
     executorInitials: "LB",
     station: "Cappa 1",
+    cappaId: null,
     date: todayStr(),
     requestedAt: "07:45",
     startedAt: "08:00",
@@ -247,12 +187,18 @@ export const preparations: Preparation[] = [
       dosage: "4.5 g",
       route: "Endovenosa",
       volume: "100 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "L. Bianchi",
       preparedAt: "23/02/2026 08:28",
       expiresAt: "24/02/2026 08:28",
       lotNumber: "LOT-2026-02-2843",
       notes: "Infondere in 30 minuti. Stabilità 24h a temperatura ambiente.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2842",
@@ -267,6 +213,7 @@ export const preparations: Preparation[] = [
     executor: "S. Ferrari",
     executorInitials: "SF",
     station: "Cappa 2",
+    cappaId: null,
     date: todayStr(),
     requestedAt: "07:30",
     startedAt: "07:40",
@@ -279,12 +226,18 @@ export const preparations: Preparation[] = [
       dosage: "1 g",
       route: "Endovenosa",
       volume: "20 ml",
+      solvent: "Acqua PPI",
       preparedBy: "S. Ferrari",
       preparedAt: "23/02/2026 07:55",
       expiresAt: "23/02/2026 13:55",
       lotNumber: "LOT-2026-02-2842",
       notes: "Somministrare in bolo lento (3-5 min). Utilizzare entro 6h.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2841",
@@ -299,6 +252,7 @@ export const preparations: Preparation[] = [
     executor: "G. Neri",
     executorInitials: "GN",
     station: "Cappa 3",
+    cappaId: null,
     date: todayStr(),
     requestedAt: "09:00",
     startedAt: "09:15",
@@ -311,12 +265,18 @@ export const preparations: Preparation[] = [
       dosage: "2.2 g",
       route: "Endovenosa",
       volume: "100 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "G. Neri",
       preparedAt: "In corso",
       expiresAt: "—",
       lotNumber: "LOT-2026-02-2841",
       notes: "Infondere in 30 minuti. Utilizzare immediatamente dopo ricostituzione.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2840",
@@ -331,6 +291,7 @@ export const preparations: Preparation[] = [
     executor: null,
     executorInitials: null,
     station: null,
+    cappaId: null,
     date: todayStr(),
     requestedAt: "10:30",
     startedAt: null,
@@ -343,12 +304,18 @@ export const preparations: Preparation[] = [
       dosage: "400 mg",
       route: "Endovenosa",
       volume: "200 ml",
+      solvent: "Glucosio 5%",
       preparedBy: "—",
       preparedAt: "In attesa",
       expiresAt: "—",
       lotNumber: "LOT-2026-02-2840",
       notes: "Infondere in 60 minuti. Proteggere dalla luce.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2839",
@@ -363,6 +330,7 @@ export const preparations: Preparation[] = [
     executor: "M. Verdi",
     executorInitials: "MV",
     station: "Cappa 2",
+    cappaId: null,
     date: todayStr(),
     requestedAt: "08:15",
     startedAt: "08:20",
@@ -375,12 +343,18 @@ export const preparations: Preparation[] = [
       dosage: "8 mg",
       route: "Endovenosa",
       volume: "5 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "M. Verdi",
       preparedAt: "23/02/2026 08:30",
       expiresAt: "23/02/2026 20:30",
       lotNumber: "LOT-2026-02-2839",
       notes: "Somministrare in bolo lento. Stabile 12h a temperatura ambiente.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2838",
@@ -395,6 +369,7 @@ export const preparations: Preparation[] = [
     executor: "S. Ferrari",
     executorInitials: "SF",
     station: "Cappa 1",
+    cappaId: null,
     date: todayStr(),
     requestedAt: "08:45",
     startedAt: "09:00",
@@ -407,12 +382,18 @@ export const preparations: Preparation[] = [
       dosage: "400 mg",
       route: "Endovenosa",
       volume: "100 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "S. Ferrari",
       preparedAt: "23/02/2026 09:25",
       expiresAt: "23/02/2026 15:25",
       lotNumber: "LOT-2026-02-2838",
       notes: "ATTENZIONE: Volume non conforme. Ripreparare.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
 
   // ── 27 febbraio 2026 ─────────────────────────────────────────────────────
@@ -429,6 +410,7 @@ export const preparations: Preparation[] = [
     executor: "L. Bianchi",
     executorInitials: "LB",
     station: "Cappa 1",
+    cappaId: null,
     date: "2026-02-27",
     requestedAt: "07:30",
     startedAt: "07:45",
@@ -441,12 +423,18 @@ export const preparations: Preparation[] = [
       dosage: "2 g",
       route: "Endovenosa",
       volume: "100 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "L. Bianchi",
       preparedAt: "27/02/2026 08:10",
       expiresAt: "27/02/2026 14:10",
       lotNumber: "LOT-2026-02-2837",
       notes: "Infondere in 30 minuti. Stabile 6h a temperatura ambiente.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2836",
@@ -461,6 +449,7 @@ export const preparations: Preparation[] = [
     executor: "G. Neri",
     executorInitials: "GN",
     station: "Cappa 3",
+    cappaId: null,
     date: "2026-02-27",
     requestedAt: "08:00",
     startedAt: "08:10",
@@ -473,12 +462,18 @@ export const preparations: Preparation[] = [
       dosage: "10 mg",
       route: "Sottocutanea",
       volume: "10 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "G. Neri",
       preparedAt: "27/02/2026 08:22",
       expiresAt: "27/02/2026 20:22",
       lotNumber: "LOT-2026-02-2836",
       notes: "RIFIUTATA: Sovradosaggio. Ripreparare con verifica doppia.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2835",
@@ -493,6 +488,7 @@ export const preparations: Preparation[] = [
     executor: "M. Verdi",
     executorInitials: "MV",
     station: "Cappa 2",
+    cappaId: null,
     date: "2026-02-27",
     requestedAt: "09:00",
     startedAt: "09:10",
@@ -505,12 +501,18 @@ export const preparations: Preparation[] = [
       dosage: "200 mg",
       route: "Endovenosa",
       volume: "100 ml",
+      solvent: "Glucosio 5%",
       preparedBy: "M. Verdi",
       preparedAt: "27/02/2026 09:30",
       expiresAt: "28/02/2026 09:30",
       lotNumber: "LOT-2026-02-2835",
       notes: "Infondere in 60 minuti. Proteggere dalla luce.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2834",
@@ -525,6 +527,7 @@ export const preparations: Preparation[] = [
     executor: "S. Ferrari",
     executorInitials: "SF",
     station: "Cappa 1",
+    cappaId: null,
     date: "2026-02-27",
     requestedAt: "10:15",
     startedAt: "10:20",
@@ -537,12 +540,18 @@ export const preparations: Preparation[] = [
       dosage: "40 mg",
       route: "Endovenosa",
       volume: "4 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "S. Ferrari",
       preparedAt: "27/02/2026 10:30",
       expiresAt: "27/02/2026 22:30",
       lotNumber: "LOT-2026-02-2834",
       notes: "Somministrare in bolo lento (1-2 min).",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
 
   // ── 26 febbraio 2026 ─────────────────────────────────────────────────────
@@ -559,6 +568,7 @@ export const preparations: Preparation[] = [
     executor: "L. Bianchi",
     executorInitials: "LB",
     station: "Cappa 1",
+    cappaId: null,
     date: "2026-02-26",
     requestedAt: "07:00",
     startedAt: "07:15",
@@ -571,12 +581,18 @@ export const preparations: Preparation[] = [
       dosage: "1 g",
       route: "Endovenosa lenta",
       volume: "250 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "L. Bianchi",
       preparedAt: "26/02/2026 07:45",
       expiresAt: "26/02/2026 19:45",
       lotNumber: "LOT-2026-02-2833",
       notes: "Infondere in almeno 60 minuti. Monitorare per Red Man Syndrome.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2832",
@@ -591,6 +607,7 @@ export const preparations: Preparation[] = [
     executor: "G. Neri",
     executorInitials: "GN",
     station: "Cappa 3",
+    cappaId: null,
     date: "2026-02-26",
     requestedAt: "08:30",
     startedAt: "08:45",
@@ -603,12 +620,18 @@ export const preparations: Preparation[] = [
       dosage: "400 mg",
       route: "Endovenosa",
       volume: "200 ml",
+      solvent: "Glucosio 5%",
       preparedBy: "G. Neri",
       preparedAt: "26/02/2026 09:05",
       expiresAt: "26/02/2026 21:05",
       lotNumber: "LOT-2026-02-2832",
       notes: "RIFIUTATA: Etichetta errata — paziente non corrispondente.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2831",
@@ -623,6 +646,7 @@ export const preparations: Preparation[] = [
     executor: "M. Verdi",
     executorInitials: "MV",
     station: "Cappa 2",
+    cappaId: null,
     date: "2026-02-26",
     requestedAt: "06:45",
     startedAt: "07:00",
@@ -635,12 +659,18 @@ export const preparations: Preparation[] = [
       dosage: "50 UI",
       route: "Endovenosa",
       volume: "50 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "M. Verdi",
       preparedAt: "26/02/2026 07:20",
       expiresAt: "26/02/2026 13:20",
       lotNumber: "LOT-2026-02-2831",
       notes: "Infusione continua. Monitorare glicemia ogni ora.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
 
   // ── 25 febbraio 2026 ─────────────────────────────────────────────────────
@@ -657,6 +687,7 @@ export const preparations: Preparation[] = [
     executor: "S. Ferrari",
     executorInitials: "SF",
     station: "Cappa 1",
+    cappaId: null,
     date: "2026-02-25",
     requestedAt: "08:00",
     startedAt: "08:15",
@@ -669,12 +700,18 @@ export const preparations: Preparation[] = [
       dosage: "2 g",
       route: "Endovenosa",
       volume: "100 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "S. Ferrari",
       preparedAt: "25/02/2026 08:42",
       expiresAt: "26/02/2026 08:42",
       lotNumber: "LOT-2026-02-2830",
       notes: "Infondere in 30 minuti. Conservare a 2-8°C se non somministrata entro 6h.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2829",
@@ -689,6 +726,7 @@ export const preparations: Preparation[] = [
     executor: "L. Bianchi",
     executorInitials: "LB",
     station: "Cappa 1",
+    cappaId: null,
     date: "2026-02-25",
     requestedAt: "09:30",
     startedAt: "09:45",
@@ -701,12 +739,18 @@ export const preparations: Preparation[] = [
       dosage: "500 mg",
       route: "Endovenosa",
       volume: "100 ml",
+      solvent: "",
       preparedBy: "L. Bianchi",
       preparedAt: "25/02/2026 10:05",
       expiresAt: "25/02/2026 22:05",
       lotNumber: "LOT-2026-02-2829",
       notes: "RIFIUTATA: Sovradosaggio volume.",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
   {
     id: "RX-2828",
@@ -721,6 +765,7 @@ export const preparations: Preparation[] = [
     executor: "M. Verdi",
     executorInitials: "MV",
     station: "Cappa 2",
+    cappaId: null,
     date: "2026-02-25",
     requestedAt: "11:00",
     startedAt: "11:05",
@@ -733,11 +778,17 @@ export const preparations: Preparation[] = [
       dosage: "40 mg",
       route: "Endovenosa",
       volume: "10 ml",
+      solvent: "NaCl 0.9%",
       preparedBy: "M. Verdi",
       preparedAt: "25/02/2026 11:15",
       expiresAt: "25/02/2026 23:15",
       lotNumber: "LOT-2026-02-2828",
       notes: "Somministrare in bolo lento (2-15 min).",
     },
+    drugCategory: null,
+    drugCatalogId: null,
+    containerCatalogId: null,
+    drugCatalogName: null,
+    containerCatalogName: null,
   },
 ];

@@ -90,6 +90,7 @@ export function CappeTab() {
   const [cappe, setCappe] = useState<Cappa[]>([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
+  const [drugPrincipi, setDrugPrincipi] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCappa, setEditingCappa] = useState<Cappa | null>(null);
 
@@ -130,10 +131,24 @@ export function CappeTab() {
     } catch { /* silenzioso */ }
   }, []);
 
+  const fetchDrugPrincipi = useCallback(async () => {
+    try {
+      const res = await extFetch(`/config/drugs`);
+      if (res.ok) {
+        const data: { id: number; name: string; active_ingredient: string | null }[] = await res.json();
+        const principi = Array.from(
+          new Set(data.map((d) => d.active_ingredient || d.name).filter(Boolean))
+        ).sort() as string[];
+        setDrugPrincipi(principi);
+      }
+    } catch { /* silenzioso */ }
+  }, []);
+
   useEffect(() => {
     fetchCappe();
     fetchCategories();
-  }, [fetchCappe, fetchCategories]);
+    fetchDrugPrincipi();
+  }, [fetchCappe, fetchCategories, fetchDrugPrincipi]);
 
   const handleDeleteCappa = async (id: number) => {
     try {
@@ -216,6 +231,7 @@ export function CappeTab() {
         onSaved={() => { fetchCappe(); setDialogOpen(false); setEditingCappa(null); }}
         initial={editingCappa ?? undefined}
         categories={categories}
+        drugs={drugPrincipi}
         title={editingCappa ? "Modifica cappa" : "Nuova cappa"}
       />
     </>

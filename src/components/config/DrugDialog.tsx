@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { extFetch } from "@/lib/apiClient";
+import { atcToCategory } from "@/lib/atcCategories";
 import type { Drug, ProcessConfig } from "@/components/config/types";
 import { useDrugLookup, type LookupResult, type AicPresentation } from "@/components/config/useDrugLookup";
 import { DrugLookupSection } from "@/components/config/DrugLookupSection";
@@ -31,9 +32,14 @@ export interface DrugDialogProps {
   title: string;
 }
 
+function composeName(active: string, conc: string, vialVol: string): string {
+  return [active.trim(), conc.trim(), vialVol.trim() ? `${vialVol.trim()} ml` : ""].filter(Boolean).join(" ");
+}
+
 export function DrugDialog({ open, onClose, onSave, initial, categories, title }: DrugDialogProps) {
-  const [processConfigs, setProcessConfigs] = useState<ProcessConfig[]>([]);
-  const [name,            setName]            = useState(initial?.name ?? "");
+  const [processConfigs,  setProcessConfigs]  = useState<ProcessConfig[]>([]);
+  const [activeIngredient,setActiveIngredient]= useState(initial?.active_ingredient ?? initial?.name ?? "");
+  const [concentration,   setConcentration]   = useState(initial?.concentration ?? "");
   const [code,            setCode]            = useState(initial?.code ?? "");
   const [aicCode,         setAicCode]         = useState(initial?.aic_code ?? "");
   const [category,        setCategory]        = useState(initial?.category ?? "");
@@ -57,14 +63,18 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
     handleLookup,
     clearLookupResults,
     clearLookupError,
-  } = useDrugLookup({ open, name, aicCode });
+  } = useDrugLookup({ open, name: activeIngredient, aicCode });
 
   useEffect(() => {
     if (open) {
-      setName(initial?.name ?? "");
+      setActiveIngredient(initial?.active_ingredient ?? initial?.name ?? "");
+      setConcentration(initial?.concentration ?? "");
       setCode(initial?.code ?? "");
       setAicCode(initial?.aic_code ?? "");
-      const initCat = initial?.category ?? "";
+      const initCode = initial?.code ?? "";
+      // Deriva la categoria dai primi 3 caratteri dell'ATC; fallback alla categoria salvata
+      const atcCat = initCode ? atcToCategory(initCode) : null;
+      const initCat = atcCat ?? initial?.category ?? "";
       setCategory(initCat);
       setIsPowder(initial?.is_powder ?? false);
       setDiluent(initial?.diluent ?? "");
@@ -84,11 +94,25 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
 
+  // Quando cambia il codice ATC, decodifica sempre la categoria dai primi 3 caratteri
+  useEffect(() => {
+    if (code) {
+      const decoded = atcToCategory(code);
+      if (decoded) {
+        setCategory(decoded);
+        setCatMode("select");
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
   const applyResult = (r: LookupResult) => {
-    setName(r.name);
-    setCode(r.code ?? "");
+    setActiveIngredient(r.name);
+    const newCode = r.code ?? "";
+    setCode(newCode);
     if (r.aic_code) setAicCode(r.aic_code);
-    const cat = r.category ?? "";
+    // Deriva sempre la categoria dall'ATC; fallback alla categoria del lookup
+    const cat = (newCode ? atcToCategory(newCode) : null) ?? r.category ?? "";
     setCategory(cat);
     if (cat && !categories.includes(cat)) setCatMode("new");
     else setCatMode("select");
@@ -97,7 +121,17 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
 
   const applyPresentation = (p: AicPresentation) => {
     setAicCode(p.codice_aic);
+    if (p.concentrazione) setConcentration(p.concentrazione);
     if (p.volume_soluzione_ml != null) setVialVolume(String(p.volume_soluzione_ml));
+    // Confezione da ricerca live: applica anche ATC e principio attivo se mancanti
+    if (p.codice_atc) {
+      setCode(p.codice_atc);
+      const cat = atcToCategory(p.codice_atc);
+      if (cat) { setCategory(cat); setCatMode(categories.includes(cat) ? "select" : "new"); }
+    }
+    if (p.principio_attivo && !activeIngredient.trim()) {
+      setActiveIngredient(p.principio_attivo);
+    }
     if (p.is_polvere) {
       setIsPowder(true);
       if (p.volume_solvente_ml != null) {
@@ -111,12 +145,26 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
     if (!medicinaliData) return;
     if (medicinaliData.volume_ml != null) setVialVolume(String(medicinaliData.volume_ml));
     if (medicinaliData.is_polvere) setIsPowder(true);
-    if (medicinaliData.codice_atc && !code) setCode(medicinaliData.codice_atc);
+    const atcCode = medicinaliData.codice_atc;
+    if (atcCode && !code) setCode(atcCode);
+    if (!category) {
+      const cat = (atcCode ? atcToCategory(atcCode) : null) ?? medicinaliData.descrizione_atc;
+      if (cat) {
+        setCategory(cat);
+        if (!categories.includes(cat)) setCatMode("new");
+        else setCatMode("select");
+      }
+    }
   };
 
   const handleSave = () => {
+    const active = activeIngredient.trim();
+    const conc = concentration.trim();
+    const composed = composeName(active, conc, vialVolume);
     onSave({
-      name: name.trim(),
+      name: composed || active,
+      active_ingredient: active || null,
+      concentration: conc || null,
       code: code.trim() || null,
       aic_code: aicCode.trim() || null,
       category: category.trim() || null,
@@ -142,8 +190,8 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
         <div className="space-y-5 py-1">
 
           <DrugLookupSection
-            name={name}
-            onNameChange={(v) => { setName(v); clearLookupResults(); clearLookupError(); }}
+            name={activeIngredient}
+            onNameChange={(v) => { setActiveIngredient(v); clearLookupResults(); clearLookupError(); }}
             aicCode={aicCode}
             onAicCodeChange={setAicCode}
             code={code}
@@ -160,6 +208,31 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
             onApplyPresentation={applyPresentation}
             onApplyMedicinali={applyMedicinali}
           />
+
+          {/* ── Sezione: Concentrazione + nome composto ───────────── */}
+          <div className="space-y-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Concentrazione e nome</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="drug-concentration">
+                  Concentrazione <span className="text-muted-foreground font-normal text-[11px]">(opzionale)</span>
+                </Label>
+                <Input
+                  id="drug-concentration"
+                  placeholder="Es. 5 mg/ml, 50 mg"
+                  value={concentration}
+                  onChange={(e) => setConcentration(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground">Auto dalla confezione AIFA</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nome composto <span className="text-muted-foreground font-normal text-[11px]">(calcolato)</span></Label>
+                <div className="h-9 flex items-center px-3 rounded-md border border-dashed border-border bg-muted/30 text-sm font-mono text-muted-foreground">
+                  {composeName(activeIngredient, concentration, vialVolume) || <span className="italic text-xs">principio attivo + conc. + volume</span>}
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* ── Sezione: Classificazione e dati tecnici ───────────── */}
           <div className="space-y-3">
@@ -336,7 +409,7 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Annulla</Button>
-          <Button onClick={handleSave} disabled={!name.trim()}>Salva</Button>
+          <Button onClick={handleSave} disabled={!activeIngredient.trim()}>Salva</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

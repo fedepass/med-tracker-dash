@@ -44,6 +44,8 @@ export interface Cappa {
 export interface Drug {
   id: number;
   name: string;
+  active_ingredient: string | null;
+  concentration: string | null;
   code: string | null;
   aic_code: string | null;
   category: string | null;

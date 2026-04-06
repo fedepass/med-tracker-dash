@@ -15,7 +15,7 @@ import PreparationsTable from "@/components/dashboard/PreparationsTable";
 import { usePreparations } from "@/context/PreparationsContext";
 import type { Status, ValidationStatus } from "@/data/preparations";
 
-const validStatuses: Status[] = ["completata", "esecuzione", "errore", "attesa"];
+const validStatuses: Status[] = ["completata", "esecuzione", "errore", "attesa", "corretta", "warning_dosaggio", "fallita"];
 const todayStr = () => format(new Date(), "yyyy-MM-dd");
 
 const Index = () => {
@@ -24,21 +24,34 @@ const Index = () => {
 
   const SESSION_KEY = "index_filters";
 
-  // Ripristina i filtri da sessionStorage se l'URL è vuoto
+  // Ripristina da sessionStorage solo tab e date range validi (mai status/validation)
   useEffect(() => {
     if (searchParams.toString() === "") {
       const saved = sessionStorage.getItem(SESSION_KEY);
       if (saved) {
-        setSearchParams(new URLSearchParams(saved), { replace: true });
+        const restored = new URLSearchParams(saved);
+        restored.delete("status");
+        restored.delete("validation");
+        // Scarta date non valide eventualmente presenti nella cache precedente
+        const df = restored.get("dateFrom");
+        const dt = restored.get("dateTo");
+        if (df && isNaN(new Date(df + "T00:00:00").getTime())) restored.delete("dateFrom");
+        if (dt && isNaN(new Date(dt + "T00:00:00").getTime())) restored.delete("dateTo");
+        if (restored.toString()) {
+          setSearchParams(restored, { replace: true });
+        }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Salva i filtri in sessionStorage ad ogni cambio
+  // Salva in sessionStorage solo tab e date range (non status/validation: sono filtri temporanei)
   useEffect(() => {
-    if (searchParams.toString()) {
-      sessionStorage.setItem(SESSION_KEY, searchParams.toString());
+    const toSave = new URLSearchParams(searchParams);
+    toSave.delete("status");
+    toSave.delete("validation");
+    if (toSave.toString()) {
+      sessionStorage.setItem(SESSION_KEY, toSave.toString());
     }
   }, [searchParams]);
 
@@ -52,11 +65,20 @@ const Index = () => {
   const validationFilter: ValidationStatus =
     rawValidation === "validata" || rawValidation === "rifiutata" ? rawValidation : null;
 
-  // Date range — default: today → today
+  // Date range — default: last 7 days → today
   const rawFrom = searchParams.get("dateFrom");
   const rawTo = searchParams.get("dateTo");
-  const dateFrom: Date = rawFrom ? new Date(rawFrom + "T00:00:00") : new Date();
-  const dateTo: Date = rawTo ? new Date(rawTo + "T00:00:00") : new Date();
+  const parseSafeDate = (s: string | null, fallbackDaysAgo = 0): Date => {
+    if (!s) {
+      const d = new Date();
+      d.setDate(d.getDate() - fallbackDaysAgo);
+      return d;
+    }
+    const d = new Date(s + "T00:00:00");
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+  const dateFrom: Date = parseSafeDate(rawFrom, 7);
+  const dateTo: Date = parseSafeDate(rawTo, 0);
   const dateFromStr = format(dateFrom, "yyyy-MM-dd");
   const dateToStr = format(dateTo, "yyyy-MM-dd");
 

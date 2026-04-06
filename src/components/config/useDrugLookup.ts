@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { extFetch } from "@/lib/apiClient";
+import { atcToCategory } from "@/lib/atcCategories";
 
 export interface LookupResult {
   name: string;
@@ -27,6 +28,8 @@ export interface AicPresentation {
   volume_solvente_ml: number | null;
   quantita_confezione: number | null;
   unita_confezione: string | null;
+  principio_attivo?: string | null;
+  codice_atc?: string | null;
 }
 
 export interface MedicinaliData {
@@ -76,8 +79,14 @@ export function useDrugLookup({ open, name, aicCode }: UseDrugLookupOptions): Us
       setMedicinaliLoading(true);
       try {
         const res = await extFetch(`/config/drug-lookup/medicinali-live?aic=${encodeURIComponent(digits)}`);
-        if (res.ok) setMedicinaliData(await res.json());
-        else setMedicinaliData(null);
+        if (res.ok) {
+          const d: MedicinaliData = await res.json();
+          // Sostituisce descrizione_atc con la categoria derivata dai primi 3 caratteri ATC
+          if (d.codice_atc) {
+            d.descrizione_atc = atcToCategory(d.codice_atc) ?? d.descrizione_atc;
+          }
+          setMedicinaliData(d);
+        } else setMedicinaliData(null);
       } catch { setMedicinaliData(null); } finally {
         setMedicinaliLoading(false);
       }
@@ -109,7 +118,12 @@ export function useDrugLookup({ open, name, aicCode }: UseDrugLookupOptions): Us
       const res = await extFetch(`/config/drug-lookup?name=${encodeURIComponent(name.trim())}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-      setLookupResults(data);
+      // Normalizza la categoria usando i primi 3 caratteri dell'ATC
+      const normalized: LookupResult[] = (data as LookupResult[]).map((r) => ({
+        ...r,
+        category: (r.code ? atcToCategory(r.code) : null) ?? r.category,
+      }));
+      setLookupResults(normalized);
       if (!data.length) setLookupError("Nessun risultato trovato");
     } catch (err: unknown) {
       setLookupError(err instanceof Error ? err.message : "Errore nella ricerca");

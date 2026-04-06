@@ -2,13 +2,7 @@ import { RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { LookupResult, AicPresentation, MedicinaliData } from "@/components/config/useDrugLookup";
 
 export interface DrugLookupSectionProps {
@@ -156,7 +150,7 @@ export function DrugLookupSection({
             />
             {code && (
               <p className="text-[11px] text-muted-foreground">
-                {code.charAt(0)} → {code.slice(0,3)} → {code.slice(0,5)} → {code}
+                {code.charAt(0)} → {code.slice(0, 3)}
               </p>
             )}
           </div>
@@ -217,7 +211,7 @@ export function DrugLookupSection({
         {(aicPresentations.length > 0 || aicPresLoading) && (
           <div className="space-y-1.5">
             <Label>
-              Confezione AIFA
+              Confezioni AIFA
               {aicPresLoading && (
                 <span className="ml-2 text-[11px] text-muted-foreground font-normal">Ricerca in corso...</span>
               )}
@@ -228,42 +222,52 @@ export function DrugLookupSection({
               )}
             </Label>
             {!aicPresLoading && aicPresentations.length > 0 && (
-              <Select
-                value={aicCode || ""}
-                onValueChange={(val) => {
-                  const pres = aicPresentations.find((p) => p.codice_aic === val);
-                  if (pres) onApplyPresentation(pres);
-                }}
-              >
-                <SelectTrigger className={`text-xs ${aicCode ? "border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20" : ""}`}>
-                  <SelectValue placeholder="Seleziona confezione..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-80">
-                  {aicPresentations.map((p) => (
-                    <SelectItem key={p.codice_aic} value={p.codice_aic}>
-                      <div className="flex flex-col py-0.5 gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium">{p.denominazione}</span>
+              <div className="rounded-md border border-border divide-y divide-border overflow-y-auto max-h-72">
+                {aicPresentations.map((p) => (
+                  <button
+                    key={p.codice_aic}
+                    type="button"
+                    onClick={() => onApplyPresentation(p)}
+                    className={cn(
+                      "w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors",
+                      aicCode === p.codice_aic
+                        ? "bg-amber-50/80 dark:bg-amber-950/30 border-l-2 border-amber-500"
+                        : ""
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-medium text-foreground">{p.denominazione}</span>
+                          {p.principio_attivo && (
+                            <span className="text-[10px] text-muted-foreground italic">{p.principio_attivo}</span>
+                          )}
                           {p.concentrazione && (
-                            <span className="font-mono text-[10px] bg-primary/10 text-primary px-1 rounded">{p.concentrazione}</span>
+                            <span className="font-mono text-[10px] bg-primary/10 text-primary border border-primary/20 px-1 py-0.5 rounded">{p.concentrazione}</span>
                           )}
                           {p.is_polvere && (
-                            <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1 rounded">POLVERE</span>
+                            <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1 py-0.5 rounded font-medium">POLVERE</span>
+                          )}
+                          {p.volume_soluzione_ml != null && (
+                            <span className="font-mono text-[10px] bg-primary/10 text-primary px-1 py-0.5 rounded">{p.volume_soluzione_ml} ml</span>
                           )}
                         </div>
-                        <span className="text-[11px] text-muted-foreground leading-tight">{p.descrizione}</span>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
+                        <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{p.descrizione}</p>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70 mt-0.5 flex-wrap">
                           <span>{p.ragione_sociale}</span>
                           {p.forma_breve && <span>· {p.forma_breve}</span>}
                           {p.via_somministrazione && <span>· {p.via_somministrazione}</span>}
                           {p.volume_solvente_ml != null && <span>· Solvente: {p.volume_solvente_ml} ml</span>}
-                          <span>· AIC {p.codice_aic}</span>
+                          {p.quantita_confezione != null && p.unita_confezione && (
+                            <span>· {p.quantita_confezione} {p.unita_confezione}</span>
+                          )}
+                          <span className="font-mono">AIC {p.codice_aic}</span>
                         </div>
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </div>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         )}

@@ -30,14 +30,12 @@ const RejectDialog = ({ open, preparationIds, defaultReason, onConfirm, onCancel
   const [reasons, setReasons] = useState<{ id: number; reason: string }[]>([]);
 
   useEffect(() => {
+    if (!open) return;
+    setReason(defaultReason ?? "");
     extFetch("/rejection-reasons")
       .then((r) => r.ok ? r.json() : [])
       .then((data) => setReasons(Array.isArray(data) ? data : []))
       .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (open) setReason(defaultReason ?? "");
   }, [open, defaultReason]);
 
   const handleConfirm = () => {

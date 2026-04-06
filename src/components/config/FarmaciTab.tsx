@@ -1,14 +1,21 @@
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Edit2, Trash2, Check, X, Search, RefreshCw, ShieldCheck, Pill, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { DrugDialog } from "./DrugDialog";
 import { useFarmaciData } from "./useFarmaciData";
 
 export function FarmaciTab() {
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("id") ? Number(searchParams.get("id")) : null;
+  const [flashId, setFlashId] = useState<number | null>(null);
+
   const {
     loadingDrugs,
     drugSearch,
@@ -34,6 +41,8 @@ export function FarmaciTab() {
     refreshingAifa,
     filteredDrugs,
     drugs,
+    categoryFilter,
+    setCategoryFilter,
     handleSaveDrug,
     handleDeleteDrug,
     handleApproveDrug,
@@ -42,6 +51,16 @@ export function FarmaciTab() {
     handleSaveApiConfig,
     handleRefreshAifa,
   } = useFarmaciData();
+
+  useEffect(() => {
+    if (!highlightId || loadingDrugs) return;
+    setFlashId(highlightId);
+    setTimeout(() => {
+      document.getElementById(`drug-row-${highlightId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+    const t = setTimeout(() => setFlashId(null), 3000);
+    return () => clearTimeout(t);
+  }, [highlightId, loadingDrugs]);
 
   return (
     <div className="space-y-5">
@@ -173,16 +192,27 @@ export function FarmaciTab() {
       <div>
         <div className="flex items-center justify-between mb-3 gap-3">
           <h3 className="text-sm font-medium text-foreground">Catalogo farmaci</h3>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                className="h-8 pl-8 w-48 text-xs"
-                placeholder="Cerca..."
+                className="h-8 pl-8 w-44 text-xs"
+                placeholder="Cerca farmaco..."
                 value={drugSearch}
                 onChange={(e) => setDrugSearch(e.target.value)}
               />
             </div>
+            <Select value={categoryFilter || "__all__"} onValueChange={(v) => setCategoryFilter(v === "__all__" ? "" : v)}>
+              <SelectTrigger className="h-8 w-44 text-xs">
+                <SelectValue placeholder="Tutte le categorie" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Tutte le categorie</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button size="sm" onClick={() => { setEditingDrug(null); setDrugDialogOpen(true); }}>
               <Plus className="h-4 w-4 mr-1.5" /> Aggiungi farmaco
             </Button>
@@ -207,10 +237,12 @@ export function FarmaciTab() {
           </Card>
         ) : (
           <div className="rounded-lg border border-border overflow-x-auto">
-            <table className="w-full text-sm min-w-[900px]">
+            <table className="w-full text-sm min-w-[1150px]">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
                   <th className="px-3 py-1.5 text-left text-xs font-medium text-muted-foreground">Nome</th>
+                  <th className="px-3 py-1.5 text-left text-xs font-medium text-muted-foreground">Principio attivo</th>
+                  <th className="px-3 py-1.5 text-left text-xs font-medium text-muted-foreground">Concentrazione</th>
                   <th className="px-3 py-1.5 text-left text-xs font-medium text-muted-foreground">ATC</th>
                   <th className="px-3 py-1.5 text-left text-xs font-medium text-muted-foreground">AIC</th>
                   <th className="px-3 py-1.5 text-left text-xs font-medium text-muted-foreground">Categoria</th>
@@ -224,16 +256,36 @@ export function FarmaciTab() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredDrugs.map((drug) => (
-                  <tr key={drug.id} className={drug.needs_review ? "bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100/60 dark:hover:bg-yellow-900/40 transition-colors border-l-2 border-yellow-400" : "hover:bg-muted/20 transition-colors"}>
-                    <td className="px-3 py-1.5 font-medium text-foreground text-sm">
+                  <tr
+                    key={drug.id}
+                    id={`drug-row-${drug.id}`}
+                    className={cn(
+                      drug.needs_review
+                        ? "bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100/60 dark:hover:bg-yellow-900/40 border-l-2 border-yellow-400"
+                        : "hover:bg-muted/20",
+                      flashId === drug.id && "ring-2 ring-inset ring-primary bg-primary/5",
+                      "transition-colors",
+                    )}
+                  >
+                    <td className="px-3 py-1.5 font-medium text-foreground text-sm max-w-[200px]">
                       <div className="flex items-center gap-1.5">
-                        {drug.name}
+                        <span className="truncate">
+                          {drug.name || [drug.active_ingredient, drug.concentration, drug.vial_volume != null ? `${drug.vial_volume} ml` : null].filter(Boolean).join(" ")}
+                        </span>
                         {drug.needs_review && (
                           <span className="text-[10px] font-semibold px-1 py-px rounded bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200 shrink-0">
                             DA VERIF.
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-3 py-1.5 text-sm text-foreground/80">
+                      {drug.active_ingredient ?? <span className="text-muted-foreground text-xs">—</span>}
+                    </td>
+                    <td className="px-3 py-1.5 text-xs text-muted-foreground">
+                      {drug.concentration
+                        ? <span className="font-mono">{drug.concentration}</span>
+                        : <span>—</span>}
                     </td>
                     <td className="px-3 py-1.5">
                       {drug.code

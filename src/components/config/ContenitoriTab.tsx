@@ -1,14 +1,19 @@
 import { useState, useCallback, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Edit2, Trash2, Check, X, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { extFetch } from "@/lib/apiClient";
+import { cn } from "@/lib/utils";
 import { ContainerDialog } from "./ContainerDialog";
 import type { Container } from "./types";
 
 export function ContenitoriTab() {
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("id") ? Number(searchParams.get("id")) : null;
+  const [flashId, setFlashId] = useState<number | null>(null);
   const [containers, setContainers] = useState<Container[]>([]);
   const [loading, setLoading] = useState(true);
   const [containerDialogOpen, setContainerDialogOpen] = useState(false);
@@ -30,6 +35,16 @@ export function ContenitoriTab() {
     fetchContainers();
   }, [fetchContainers]);
 
+  useEffect(() => {
+    if (!highlightId || loading) return;
+    setFlashId(highlightId);
+    setTimeout(() => {
+      document.getElementById(`container-row-${highlightId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+    const t = setTimeout(() => setFlashId(null), 3000);
+    return () => clearTimeout(t);
+  }, [highlightId, loading]);
+
   const handleSaveContainer = async (data: Omit<Container, "id">) => {
     try {
       if (editingContainer) {
@@ -39,7 +54,8 @@ export function ContenitoriTab() {
           body: JSON.stringify(data),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setContainers((prev) => prev.map((c) => c.id === editingContainer.id ? { ...c, ...data } : c));
+        const updated: Container = await res.json();
+        setContainers((prev) => prev.map((c) => c.id === editingContainer.id ? updated : c));
         toast.success("Contenitore aggiornato");
       } else {
         const res = await extFetch(`/config/containers`, {
@@ -61,14 +77,14 @@ export function ContenitoriTab() {
   };
 
   const handleDeleteContainer = async (id: number) => {
-    try {
-      const res = await extFetch(`/config/containers/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setContainers((prev) => prev.filter((c) => c.id !== id));
-      toast.success("Contenitore rimosso");
-    } catch (err: unknown) {
-      toast.error("Errore nella rimozione", { description: String(err) });
+    const res = await extFetch(`/config/containers/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      toast.error("Impossibile eliminare", { description: body.detail ?? `Errore HTTP ${res.status}` });
+      return;
     }
+    setContainers((prev) => prev.filter((c) => c.id !== id));
+    toast.success("Contenitore rimosso");
   };
 
   const handleApproveContainer = async (id: number) => {
@@ -120,7 +136,17 @@ export function ContenitoriTab() {
             </thead>
             <tbody className="divide-y divide-border">
               {containers.map((c) => (
-                <tr key={c.id} className={c.needs_review ? "bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100/60 dark:hover:bg-yellow-900/40 transition-colors border-l-2 border-yellow-400" : "hover:bg-muted/20 transition-colors"}>
+                <tr
+                  key={c.id}
+                  id={`container-row-${c.id}`}
+                  className={cn(
+                    c.needs_review
+                      ? "bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100/60 dark:hover:bg-yellow-900/40 border-l-2 border-yellow-400"
+                      : "hover:bg-muted/20",
+                    flashId === c.id && "ring-2 ring-inset ring-primary bg-primary/5",
+                    "transition-colors",
+                  )}
+                >
                   <td className="px-3 py-1.5 font-medium text-foreground text-sm">
                     <div className="flex items-center gap-1.5">
                       {c.name}

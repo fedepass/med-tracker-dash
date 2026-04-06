@@ -30,6 +30,7 @@ export interface CappaDialogProps {
   onSaved: () => void;
   initial?: Cappa;
   categories: string[];
+  drugs: string[];   // principi attivi deduplicati
   title: string;
 }
 
@@ -59,7 +60,7 @@ function DrugRuleRow({ rule, onDelete }: { rule: DrugRule; onDelete: () => void 
   );
 }
 
-export function CappaDialog({ open, onClose, onSaved, initial, categories, title }: CappaDialogProps) {
+export function CappaDialog({ open, onClose, onSaved, initial, categories, drugs, title }: CappaDialogProps) {
   const [name,        setName]        = useState(initial?.name ?? "");
   const [tipologia,   setTipologia]   = useState<Tipologia>(initial?.tipologia ?? "sterile");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -266,13 +267,17 @@ export function CappaDialog({ open, onClose, onSaved, initial, categories, title
                 </Select>
 
                 {ruleTarget === "drug" ? (
-                  <Input
-                    className="h-8 text-xs flex-1 min-w-[160px]"
-                    placeholder="Nome farmaco (es. Vancomicina)..."
-                    value={ruleDrugName}
-                    onChange={(e) => setRuleDrugName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleAddRule(); }}
-                  />
+                  <Select value={ruleDrugName} onValueChange={setRuleDrugName}>
+                    <SelectTrigger className="h-8 text-xs flex-1 min-w-[160px]">
+                      <SelectValue placeholder="Seleziona principio attivo..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drugs.length > 0
+                        ? drugs.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)
+                        : <div className="px-3 py-2 text-xs text-muted-foreground italic">Nessun farmaco disponibile</div>
+                      }
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Select value={ruleCat} onValueChange={setRuleCat}>
                     <SelectTrigger className="h-8 text-xs flex-1 min-w-[160px]">

@@ -45,6 +45,10 @@
     --status-complete-bg: 152 60% 94%;
     --status-error: 0 72% 56%;
     --status-error-bg: 0 72% 95%;
+    --status-corretta: 270 60% 52%;
+    --status-corretta-bg: 270 60% 95%;
+    --status-warning-dosaggio: 30 90% 50%;
+    --status-warning-dosaggio-bg: 30 90% 94%;
 
     --priority-high: 0 72% 56%;
     --priority-medium: 36 90% 52%;
@@ -89,6 +93,10 @@
     --status-progress-bg: 36 50% 18%;
     --status-complete-bg: 152 40% 16%;
     --status-error-bg: 0 50% 18%;
+    --status-corretta: 270 50% 65%;
+    --status-corretta-bg: 270 40% 20%;
+    --status-warning-dosaggio: 30 80% 62%;
+    --status-warning-dosaggio-bg: 30 60% 20%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;

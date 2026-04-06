@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { Plus, Trash2, ArrowUp, ArrowDown, Zap, Clock, RefreshCw, Scale, Pill } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -49,19 +48,36 @@ const STRATEGIES: { value: AssignmentStrategy; label: string; description: strin
 
 interface DrugPriorityRulesPanelProps {
   rules: DrugPriorityRule[];
+  drugs: { id: number; name: string; active_ingredient: string | null }[];
+  categories: { id: number; name: string }[];
   onAdd: (rule: Omit<DrugPriorityRule, "id">) => void;
   onUpdate: (id: number, patch: Partial<DrugPriorityRule>) => void;
   onDelete: (id: number) => void;
 }
 
-function DrugPriorityRulesPanel({ rules, onAdd, onUpdate, onDelete }: DrugPriorityRulesPanelProps) {
+function DrugPriorityRulesPanel({ rules, drugs, categories, onAdd, onUpdate, onDelete }: DrugPriorityRulesPanelProps) {
   const [newType, setNewType] = useState<"drug" | "category">("drug");
   const [newValue, setNewValue] = useState("");
   const [newPriority, setNewPriority] = useState(1);
 
+  // Usa active_ingredient deduplicato; fallback su name se non disponibile
+  const drugPrincipi = Array.from(
+    new Set(drugs.map((d) => d.active_ingredient || d.name).filter(Boolean))
+  ).sort() as string[];
+
+  const options = newType === "drug"
+    ? drugPrincipi
+    : categories.map((c) => c.name);
+
+  // Reset selection when type changes
+  function handleTypeChange(t: "drug" | "category") {
+    setNewType(t);
+    setNewValue("");
+  }
+
   function handleAdd() {
-    if (!newValue.trim()) return;
-    onAdd({ rule_type: newType, value: newValue.trim(), priority: newPriority, enabled: true });
+    if (!newValue) return;
+    onAdd({ rule_type: newType, value: newValue, priority: newPriority, enabled: true });
     setNewValue("");
     setNewPriority((prev) => prev + 1);
   }
@@ -122,19 +138,22 @@ function DrugPriorityRulesPanel({ rules, onAdd, onUpdate, onDelete }: DrugPriori
       <div className="flex items-center gap-2">
         <select
           value={newType}
-          onChange={(e) => setNewType(e.target.value as "drug" | "category")}
+          onChange={(e) => handleTypeChange(e.target.value as "drug" | "category")}
           className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none"
         >
           <option value="drug">Farmaco</option>
           <option value="category">Categoria</option>
         </select>
-        <Input
-          className="h-7 text-xs flex-1"
-          placeholder={newType === "drug" ? "es. Oxaliplatino" : "es. L01"}
+        <select
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-        />
+          className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none"
+        >
+          <option value="">— Seleziona {newType === "drug" ? "farmaco" : "categoria"} —</option>
+          {options.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
         <input
           type="number" min={1} value={newPriority}
           onChange={(e) => setNewPriority(Number(e.target.value))}
@@ -143,7 +162,7 @@ function DrugPriorityRulesPanel({ rules, onAdd, onUpdate, onDelete }: DrugPriori
         />
         <button
           onClick={handleAdd}
-          disabled={!newValue.trim()}
+          disabled={!newValue}
           className="inline-flex items-center gap-1 rounded bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors"
         >
           <Plus className="h-3 w-3" /> Aggiungi
@@ -160,18 +179,27 @@ export function AssignmentTab() {
   ]);
   const [drugPriorityRules, setDrugPriorityRules] = useState<DrugPriorityRule[]>([]);
   const [savingStrategy, setSavingStrategy] = useState(false);
+  const [drugOptions, setDrugOptions] = useState<{ id: number; name: string; active_ingredient: string | null }[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<{ id: number; name: string }[]>([]);
 
   const fetchStrategy = useCallback(async () => {
     try {
-      const [stepsRes, rulesRes] = await Promise.all([
+      const [stepsRes, rulesRes, drugsRes, catsRes] = await Promise.all([
         extFetch(`/config/assignment`),
         extFetch(`/config/drug-priority-rules`),
+        extFetch(`/config/drugs`),
+        extFetch(`/drugs/categories`),
       ]);
       if (stepsRes.ok) {
         const data: { steps: AssignmentStepConfig[] } = await stepsRes.json();
         if (data.steps?.length) setAssignmentSteps(data.steps);
       }
       if (rulesRes.ok) setDrugPriorityRules(await rulesRes.json());
+      if (drugsRes.ok) {
+        const drugs: { id: number; name: string; active_ingredient: string | null }[] = await drugsRes.json();
+        setDrugOptions(drugs.map(({ id, name, active_ingredient }) => ({ id, name, active_ingredient: active_ingredient ?? null })));
+      }
+      if (catsRes.ok) setCategoryOptions(await catsRes.json());
     } catch {
       // silenzioso — default mantenuto
     }
@@ -341,6 +369,8 @@ export function AssignmentTab() {
               {step.strategy === "drug_priority" && (
                 <DrugPriorityRulesPanel
                   rules={drugPriorityRules}
+                  drugs={drugOptions}
+                  categories={categoryOptions}
                   onAdd={handleAddDrugPriorityRule}
                   onUpdate={handleUpdateDrugPriorityRule}
                   onDelete={handleDeleteDrugPriorityRule}

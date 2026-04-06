@@ -14,7 +14,7 @@ type SortKey = "id" | "status" | "priority" | "drug" | "dispensed" | "errorRate"
 type SortDir = "asc" | "desc";
 
 const priorityOrder: Record<Priority, number> = { alta: 0, media: 1, bassa: 2 };
-const statusOrder: Record<Status, number> = { errore: 0, attesa: 1, esecuzione: 2, completata: 3 };
+const statusOrder: Record<Status, number> = { errore: 0, fallita: 0, attesa: 1, esecuzione: 2, completata: 3, corretta: 4, warning_dosaggio: 5 };
 
 function parseRequestedAt(s: string | null): number {
   if (!s) return 0;
@@ -70,10 +70,13 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
   useEffect(() => { persistState(); }, [persistState]);
 
   const toggleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
+    if (sortKey !== key) {
       setSortKey(key);
+      setSortDir("asc");
+    } else if (sortDir === "asc") {
+      setSortDir("desc");
+    } else {
+      setSortKey(null);
       setSortDir("asc");
     }
   };
@@ -97,7 +100,13 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
     }
 
     if (statusFilter) {
-      data = data.filter((p) => p.status === statusFilter);
+      // "errore" e "fallita" sono lo stesso gruppo di errore
+      const errorGroup: Status[] = ["errore", "fallita"];
+      data = data.filter((p) =>
+        errorGroup.includes(statusFilter)
+          ? errorGroup.includes(p.status)
+          : p.status === statusFilter
+      );
     }
 
     if (!search.trim()) return data;
@@ -113,25 +122,31 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
   const sorted = useMemo(() => {
     if (!sortKey) {
       const activeSteps = assignmentSteps.filter((s) => s.enabled);
+      const drugPriorityStep = activeSteps.find((s) => s.strategy === "drug_priority");
+      const otherSteps = activeSteps.filter((s) => s.strategy !== "drug_priority");
+
+      const getDrugRank = (p: typeof filtered[0]): number => {
+        const activeRules = drugPriorityRules.filter((r) => r.enabled);
+        const matched = activeRules.filter((r) =>
+          r.rule_type === "drug"
+            ? p.drug?.toLowerCase().includes(r.value.toLowerCase())
+            : (p.drugCategory ?? "").toLowerCase().startsWith(r.value.toLowerCase())
+        );
+        return matched.length > 0 ? Math.min(...matched.map((r) => r.priority)) : 9999;
+      };
+
       return [...filtered].sort((a, b) => {
-        for (const step of activeSteps) {
+        // drug_priority applicato sempre come sort primario se lo step è attivo
+        if (drugPriorityStep) {
+          const rankDiff = getDrugRank(a) - getDrugRank(b);
+          if (rankDiff !== 0) return rankDiff;
+        }
+        // Altri step in ordine configurato (tiebreaker all'interno dello stesso rank)
+        for (const step of otherSteps) {
           let cmp = 0;
           switch (step.strategy) {
             case "urgency": cmp = priorityOrder[a.priority] - priorityOrder[b.priority]; break;
             case "lifo":    cmp = parseRequestedAt(b.requestedAt) - parseRequestedAt(a.requestedAt); break;
-            case "drug_priority": {
-              const activeRules = drugPriorityRules.filter((r) => r.enabled);
-              const rank = (p: typeof a) => {
-                const matched = activeRules.filter((r) =>
-                  r.rule_type === "drug"
-                    ? p.drug?.toLowerCase().includes(r.value.toLowerCase())
-                    : (p.drugCategory ?? "").toLowerCase().startsWith(r.value.toLowerCase())
-                );
-                return matched.length > 0 ? Math.min(...matched.map((r) => r.priority)) : 9999;
-              };
-              cmp = rank(a) - rank(b);
-              break;
-            }
             case "fifo":
             case "round_robin":
             case "load_balance":

@@ -49,7 +49,7 @@ const StatCards = ({ activeStatus, onStatusClick, dateFrom, dateTo }: StatCardsP
       attesa: forDate.filter((p) => p.status === "attesa").length,
       esecuzione: forDate.filter((p) => p.status === "esecuzione").length,
       completata: forDate.filter((p) => p.status === "completata").length,
-      errore: forDate.filter((p) => p.status === "errore").length,
+      errore: forDate.filter((p) => p.status === "errore" || p.status === "fallita").length,
     };
   }, [preparations, dateFrom, dateTo]);
 
@@ -71,7 +71,11 @@ const StatCards = ({ activeStatus, onStatusClick, dateFrom, dateTo }: StatCardsP
           label={stat.label}
           colorClass={stat.colorClass}
           bgClass={stat.bgClass}
-          active={activeStatus === stat.status}
+          active={
+            stat.status === "errore"
+              ? activeStatus === "errore" || activeStatus === "fallita"
+              : activeStatus === stat.status
+          }
           onClick={() => onStatusClick(stat.status)}
         />
       ))}

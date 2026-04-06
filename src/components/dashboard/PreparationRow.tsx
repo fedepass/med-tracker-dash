@@ -1,4 +1,5 @@
-import { Check, X, ArrowRight, Clock, RotateCcw, LinkIcon, Unlink } from "lucide-react";
+import { Check, X, ArrowRight, Clock, RotateCcw, LinkIcon, Unlink, PencilLine } from "lucide-react";
+import { calcDispensedDisplay } from "@/lib/dispensedUnit";
 import { useNavigate } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,10 @@ const statusConfig: Record<Status, { icon: React.ReactNode; label: string; class
   completata: { icon: <CheckCircle2 className="h-4 w-4" />, label: "Completata", className: "text-status-complete" },
   esecuzione: { icon: <Loader className="h-4 w-4" />, label: "In esecuzione", className: "text-status-progress" },
   errore: { icon: <AlertTriangle className="h-4 w-4" />, label: "Errore", className: "text-status-error" },
-  attesa: { icon: <Clock className="h-4 w-4" />, label: "Da eseguire", className: "text-status-waiting" },
+  attesa:   { icon: <Clock className="h-4 w-4" />, label: "Da eseguire", className: "text-status-waiting" },
+  corretta: { icon: <PencilLine className="h-4 w-4" />, label: "Corretta", className: "text-status-corretta" },
+  warning_dosaggio: { icon: <AlertTriangle className="h-4 w-4" />, label: "Warning dosaggio", className: "text-status-warning-dosaggio" },
+  fallita: { icon: <AlertTriangle className="h-4 w-4" />, label: "Fallita", className: "text-status-error" },
 };
 
 const validationConfig: Record<NonNullable<ValidationStatus>, { icon: React.ReactNode; label: string; className: string }> = {
@@ -39,6 +43,9 @@ interface Preparation {
   drug: string;
   drugCatalogId?: number | null;
   drugCatalogName?: string | null;
+  drugCatalogNeedsReview?: boolean;
+  drugCatalogConcentration?: string | null;
+  drugCatalogVialVolume?: number | null;
   drugCategory?: string | null;
   labelData: {
     dosage?: string | null;
@@ -122,14 +129,16 @@ export function PreparationRow({
           {pc.label}
         </Badge>
       </td>
-      <td className={`px-3 py-1.5 ${p.drugCatalogId == null ? "bg-amber-50 dark:bg-amber-950/30" : ""}`}>
-        <p className="font-medium text-foreground">{p.drug}</p>
-        {p.labelData.dosage && (
-          <p className="text-xs text-muted-foreground mt-0.5">{p.labelData.dosage}</p>
-        )}
+      <td className={`px-3 py-1.5 ${p.drugCatalogId == null || p.drugCatalogNeedsReview ? "bg-amber-50 dark:bg-amber-950/30" : ""}`}>
+        <p className={`font-medium ${p.drugCatalogNeedsReview ? "text-amber-700 dark:text-amber-400" : "text-foreground"}`}>
+          {p.drug}
+          {p.labelData.dosage && (
+            <span className="ml-1.5 text-xs font-normal text-muted-foreground">{p.labelData.dosage}</span>
+          )}
+        </p>
         {p.drugCatalogId != null ? (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
-            <LinkIcon className="h-2.5 w-2.5" />{p.drugCatalogName ?? "catalogo"}
+          <span className={`inline-flex items-center gap-0.5 text-[10px] mt-0.5 ${p.drugCatalogNeedsReview ? "text-amber-600 dark:text-amber-400 font-medium" : "text-emerald-600 dark:text-emerald-400"}`}>
+            <LinkIcon className="h-2.5 w-2.5" />{p.drugCatalogName ?? "catalogo"}{p.drugCatalogNeedsReview && " ⚠ da verif."}
           </span>
         ) : (
           <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
@@ -159,42 +168,35 @@ export function PreparationRow({
         )}
       </td>
       <td className="px-3 py-1.5">
-        {p.dispensed > 0 ? (() => {
-          const sg = p.specificGravity;
-          const unit = p.dosageUnit?.toLowerCase() ?? "";
-          let displayValue: string;
-          let displayUnit: string;
-          if (sg != null && unit && !["ml", "l"].includes(unit)) {
-            const grams = p.dispensed * sg;
-            if (unit === "mcg" || unit === "μg") {
-              displayValue = (grams * 1_000_000).toFixed(0);
-              displayUnit = "mcg";
-            } else if (unit === "mg") {
-              displayValue = (grams * 1_000).toFixed(1);
-              displayUnit = "mg";
-            } else {
-              displayValue = grams.toFixed(3);
-              displayUnit = "g";
-            }
-          } else {
-            displayValue = p.dispensed.toFixed(2);
-            displayUnit = p.dosageUnit ?? "ml";
-          }
-          return (
-            <>
+        {(() => {
+          let dispensedLine: React.ReactNode = null;
+          if (p.dispensed > 0) {
+            const { value, unit } = calcDispensedDisplay(
+              p.dispensed,
+              p.dosageUnit,
+              p.drugCatalogConcentration,
+              p.drugCatalogVialVolume,
+              p.specificGravity,
+            );
+            dispensedLine = (
               <p className="text-sm font-medium text-foreground">
-                {displayValue} {displayUnit}
+                {value} {unit}
+                {p.dosageValue != null && p.dosageUnit && (
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                    / {p.dosageValue} {p.dosageUnit}
+                  </span>
+                )}
               </p>
-              {p.dosageValue != null && p.dosageUnit && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  richiesti {p.dosageValue} {p.dosageUnit}
-                </p>
-              )}
-            </>
-          );
-        })() : (
-          <span className="text-muted-foreground">—</span>
-        )}
+            );
+          }
+          const richiestiLine = !dispensedLine && p.dosageValue != null && p.dosageUnit ? (
+            <p className="text-sm text-muted-foreground">
+              {p.dosageValue} {p.dosageUnit}
+            </p>
+          ) : null;
+          if (!dispensedLine && !richiestiLine) return <span className="text-muted-foreground">—</span>;
+          return <>{dispensedLine}{richiestiLine}</>;
+        })()}
       </td>
       <td className="px-3 py-1.5">
         {p.errorRate > 0 ? (

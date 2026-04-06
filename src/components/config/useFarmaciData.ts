@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { extFetch } from "@/lib/apiClient";
+import { usePreparations } from "@/context/PreparationsContext";
 import type { Drug, ProcessConfig } from "./types";
 
 interface UseFarmaciDataReturn {
@@ -8,6 +9,8 @@ interface UseFarmaciDataReturn {
   loadingDrugs: boolean;
   drugSearch: string;
   setDrugSearch: (v: string) => void;
+  categoryFilter: string;
+  setCategoryFilter: (v: string) => void;
   drugDialogOpen: boolean;
   setDrugDialogOpen: (v: boolean) => void;
   editingDrug: Drug | null;
@@ -38,9 +41,11 @@ interface UseFarmaciDataReturn {
 }
 
 export function useFarmaciData(): UseFarmaciDataReturn {
+  const { refreshPreparations } = usePreparations();
   const [drugs, setDrugs] = useState<Drug[]>([]);
   const [loadingDrugs, setLoadingDrugs] = useState(true);
   const [drugSearch, setDrugSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [drugDialogOpen, setDrugDialogOpen] = useState(false);
   const [editingDrug, setEditingDrug] = useState<Drug | null>(null);
 
@@ -144,8 +149,12 @@ export function useFarmaciData(): UseFarmaciDataReturn {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setDrugs((prev) => prev.map((d) => d.id === editingDrug.id ? { ...d, ...data } : d));
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail ?? `HTTP ${res.status}`);
+        }
+        const updated: Drug = await res.json();
+        setDrugs((prev) => prev.map((d) => d.id === editingDrug.id ? updated : d));
         toast.success("Farmaco aggiornato");
       } else {
         const res = await extFetch(`/config/drugs`, {
@@ -153,7 +162,10 @@ export function useFarmaciData(): UseFarmaciDataReturn {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail ?? `HTTP ${res.status}`);
+        }
         const created: Drug = await res.json();
         setDrugs((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
         toast.success("Farmaco aggiunto al catalogo");
@@ -168,14 +180,14 @@ export function useFarmaciData(): UseFarmaciDataReturn {
   };
 
   const handleDeleteDrug = async (id: number) => {
-    try {
-      const res = await extFetch(`/config/drugs/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setDrugs((prev) => prev.filter((d) => d.id !== id));
-      toast.success("Farmaco rimosso dal catalogo");
-    } catch (err: unknown) {
-      toast.error("Errore nella rimozione", { description: String(err) });
+    const res = await extFetch(`/config/drugs/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      toast.error("Impossibile eliminare", { description: body.detail ?? `Errore HTTP ${res.status}` });
+      return;
     }
+    setDrugs((prev) => prev.filter((d) => d.id !== id));
+    toast.success("Farmaco rimosso dal catalogo");
   };
 
   const handleApproveDrug = async (id: number) => {
@@ -184,6 +196,7 @@ export function useFarmaciData(): UseFarmaciDataReturn {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setDrugs((prev) => prev.map((d) => d.id === id ? { ...d, needs_review: false } : d));
       toast.success("Farmaco verificato");
+      refreshPreparations();
     } catch (err: unknown) {
       toast.error("Errore nella verifica", { description: String(err) });
     }
@@ -208,7 +221,14 @@ export function useFarmaciData(): UseFarmaciDataReturn {
 
   const handleDeleteCategory = async (id: number) => {
     try {
-      await extFetch(`/config/categories/${id}`, { method: "DELETE" });
+      const res = await extFetch(`/config/categories/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error("Impossibile eliminare la categoria", {
+          description: body.detail ?? `Errore ${res.status}`,
+        });
+        return;
+      }
       setCategories((prev) => prev.filter((c) => c.id !== id));
     } catch (err: unknown) {
       toast.error("Errore nella rimozione", { description: String(err) });
@@ -217,8 +237,10 @@ export function useFarmaciData(): UseFarmaciDataReturn {
 
   const filteredDrugs = drugs.filter((d) => {
     const q = drugSearch.toLowerCase();
-    return !q || d.name.toLowerCase().includes(q) || (d.code ?? "").toLowerCase().includes(q)
+    const matchesSearch = !q || d.name.toLowerCase().includes(q) || (d.code ?? "").toLowerCase().includes(q)
       || (d.aic_code ?? "").toLowerCase().includes(q) || (d.category ?? "").toLowerCase().includes(q);
+    const matchesCategory = !categoryFilter || (d.category ?? "") === categoryFilter;
+    return matchesSearch && matchesCategory;
   });
 
   return {
@@ -226,6 +248,8 @@ export function useFarmaciData(): UseFarmaciDataReturn {
     loadingDrugs,
     drugSearch,
     setDrugSearch,
+    categoryFilter,
+    setCategoryFilter,
     drugDialogOpen,
     setDrugDialogOpen,
     editingDrug,

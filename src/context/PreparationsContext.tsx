@@ -19,7 +19,7 @@ function formatTS(ts: string | null | undefined): string | null {
   const dt = new Date(ts);
   if (isNaN(dt.getTime())) return null;
   return dt.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
-    + " " + dt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+    + " " + dt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 function mapPreparation(r: any): Preparation {
@@ -68,10 +68,13 @@ function mapPreparation(r: any): Preparation {
     },
     photos: (r.photos ?? []).map(resolvePhoto),
     drugCategory:         r.drug_category           ?? null,
-    drugCatalogId:        r.drug_catalog_id        ?? null,
-    containerCatalogId:   r.container_catalog_id   ?? null,
-    drugCatalogName:      r.drug_catalog_name      ?? null,
-    containerCatalogName: r.container_catalog_name ?? null,
+    drugCatalogId:          r.drug_catalog_id              ?? null,
+    containerCatalogId:     r.container_catalog_id         ?? null,
+    drugCatalogName:          r.drug_catalog_name            ?? null,
+    drugCatalogNeedsReview:   r.drug_catalog_needs_review   ?? false,
+    drugCatalogConcentration: r.drug_catalog_concentration  ?? null,
+    drugCatalogVialVolume:    r.drug_catalog_vial_volume != null ? Number(r.drug_catalog_vial_volume) : null,
+    containerCatalogName:     r.container_catalog_name      ?? null,
   } as Preparation;
 }
 
