@@ -142,7 +142,9 @@ export function ContenitoriTab() {
                   className={cn(
                     c.needs_review
                       ? "bg-yellow-50 dark:bg-yellow-950/30 hover:bg-yellow-100/60 dark:hover:bg-yellow-900/40 border-l-2 border-yellow-400"
-                      : "hover:bg-muted/20",
+                      : !c.enabled
+                        ? "bg-muted/40 opacity-60 hover:opacity-80 border-l-2 border-muted-foreground/30"
+                        : "hover:bg-muted/20",
                     flashId === c.id && "ring-2 ring-inset ring-primary bg-primary/5",
                     "transition-colors",
                   )}
@@ -153,6 +155,11 @@ export function ContenitoriTab() {
                       {c.needs_review && (
                         <span className="text-[10px] font-semibold px-1 py-px rounded bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200 shrink-0">
                           DA VERIF.
+                        </span>
+                      )}
+                      {!c.enabled && (
+                        <span className="text-[10px] font-semibold px-1 py-px rounded bg-muted text-muted-foreground shrink-0">
+                          INATTIVO
                         </span>
                       )}
                     </div>

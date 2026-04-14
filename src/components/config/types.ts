@@ -50,6 +50,7 @@ export interface Drug {
   aic_code: string | null;
   category: string | null;
   is_powder: boolean;
+  enabled: boolean;
   diluent: string | null;
   reconstitution_volume: number | null;
   reconstitution_volume_unit: string | null;
@@ -57,6 +58,7 @@ export interface Drug {
   vial_volume: number | null;
   needs_review: boolean;
   process_config_id: number | null;
+  barcode_code: string | null;
 }
 
 export interface ProcessConfig {
@@ -72,4 +74,5 @@ export interface Container {
   container_type: string | null;
   enabled: boolean;
   needs_review: boolean;
+  barcode_code: string | null;
 }

@@ -53,6 +53,9 @@ const PreparationDetail = () => {
   const [drugCatalogConcentration,   setDrugCatalogConcentration]   = useState<string | null>(null);
   const [drugCatalogVialVolume,      setDrugCatalogVialVolume]      = useState<number | null>(null);
   const [containerCatalogId, setContainerCatalogId] = useState<number | null>(null);
+  const [processStepOrder,   setProcessStepOrder]   = useState<number | null>(null);
+  const [processStepName,    setProcessStepName]    = useState<string | null>(null);
+  const [processStepsTotal,  setProcessStepsTotal]  = useState<number | null>(null);
   const [drugOptions,        setDrugOptions]        = useState<Drug[]>([]);
   const [containerOptions,   setContainerOptions]   = useState<Container[]>([]);
   const [linkSaving,         setLinkSaving]         = useState(false);
@@ -102,6 +105,9 @@ const PreparationDetail = () => {
         setDrugCatalogConcentration(data.drug_catalog_concentration ?? null);
         setDrugCatalogVialVolume(data.drug_catalog_vial_volume != null ? Number(data.drug_catalog_vial_volume) : null);
         setContainerCatalogId(data.container_catalog_id ?? null);
+        setProcessStepOrder(data.process_step_order != null ? Number(data.process_step_order) : null);
+        setProcessStepName(data.process_step_name ?? null);
+        setProcessStepsTotal(data.process_steps_total != null ? Number(data.process_steps_total) : null);
         const label = data.label ?? data.labelData ?? {};
         setDetailData({
           id:               String(data.id),

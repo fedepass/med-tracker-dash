@@ -142,33 +142,45 @@ export function useFarmaciData(): UseFarmaciDataReturn {
   };
 
   const handleSaveDrug = async (data: Omit<Drug, "id">) => {
+    const { barcode_code, ...drugData } = data;
     try {
+      let drugId: number;
       if (editingDrug) {
         const res = await extFetch(`/config/drugs/${editingDrug.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+          body: JSON.stringify(drugData),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.detail ?? `HTTP ${res.status}`);
         }
         const updated: Drug = await res.json();
-        setDrugs((prev) => prev.map((d) => d.id === editingDrug.id ? updated : d));
+        setDrugs((prev) => prev.map((d) => d.id === editingDrug.id ? { ...updated, barcode_code: barcode_code ?? null } : d));
+        drugId = editingDrug.id;
         toast.success("Farmaco aggiornato");
       } else {
         const res = await extFetch(`/config/drugs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+          body: JSON.stringify(drugData),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.detail ?? `HTTP ${res.status}`);
         }
         const created: Drug = await res.json();
-        setDrugs((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+        setDrugs((prev) => [...prev, { ...created, barcode_code: barcode_code ?? null }].sort((a, b) => a.name.localeCompare(b.name)));
+        drugId = created.id;
         toast.success("Farmaco aggiunto al catalogo");
+      }
+      // Save barcode separately (drugs_catalog_ext table)
+      if (barcode_code !== undefined) {
+        await extFetch(`/drugs/${drugId}/barcode`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ barcode_code: barcode_code ?? null }),
+        }).catch(() => {});
       }
       fetchCategories();
     } catch (err: unknown) {

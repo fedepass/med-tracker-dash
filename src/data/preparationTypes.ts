@@ -65,6 +65,11 @@ export interface Preparation {
   drugCatalogConcentration: string | null;
   drugCatalogVialVolume: number | null;
   containerCatalogName: string | null;
+  currentProcessStepId: number | null;
+  processStepOrder: number | null;
+  processStepName: string | null;
+  processStepCode: string | null;
+  processStepsTotal: number | null;
 }
 
 // Photo helpers for consistent usage

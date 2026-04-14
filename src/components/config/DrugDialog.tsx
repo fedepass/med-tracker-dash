@@ -44,6 +44,7 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
   const [aicCode,         setAicCode]         = useState(initial?.aic_code ?? "");
   const [category,        setCategory]        = useState(initial?.category ?? "");
   const [isPowder,        setIsPowder]        = useState(initial?.is_powder ?? false);
+  const [enabled,         setEnabled]         = useState(initial?.enabled ?? true);
   const [diluent,         setDiluent]         = useState(initial?.diluent ?? "");
   const [reconVolume,     setReconVolume]     = useState(initial?.reconstitution_volume?.toString() ?? "");
   const [reconVolumeUnit, setReconVolumeUnit] = useState(initial?.reconstitution_volume_unit ?? "ml");
@@ -51,6 +52,7 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
   const [vialVolume,      setVialVolume]      = useState(initial?.vial_volume?.toString() ?? "");
   const [processConfigId, setProcessConfigId] = useState<string>(initial?.process_config_id?.toString() ?? "");
   const [catMode,         setCatMode]         = useState<"select" | "new">("select");
+  const [barcodeCode,     setBarcodeCode]     = useState(initial?.barcode_code ?? initial?.aic_code ?? "");
 
   const {
     lookupResults,
@@ -77,12 +79,14 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
       const initCat = atcCat ?? initial?.category ?? "";
       setCategory(initCat);
       setIsPowder(initial?.is_powder ?? false);
+      setEnabled(initial?.enabled ?? true);
       setDiluent(initial?.diluent ?? "");
       setReconVolume(initial?.reconstitution_volume?.toString() ?? "");
       setReconVolumeUnit(initial?.reconstitution_volume_unit ?? "ml");
       setSpecificGravity(initial?.specific_gravity?.toString() ?? "");
       setVialVolume(initial?.vial_volume?.toString() ?? "");
       setProcessConfigId(initial?.process_config_id?.toString() ?? "");
+      setBarcodeCode(initial?.barcode_code ?? initial?.aic_code ?? "");
       clearLookupResults();
       clearLookupError();
       setCatMode(initCat && !categories.includes(initCat) ? "new" : "select");
@@ -169,6 +173,7 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
       aic_code: aicCode.trim() || null,
       category: category.trim() || null,
       is_powder: isPowder,
+      enabled,
       diluent: isPowder && diluent.trim() ? diluent.trim() : null,
       reconstitution_volume: isPowder && reconVolume ? parseFloat(reconVolume) : null,
       reconstitution_volume_unit: isPowder && reconVolume ? reconVolumeUnit : null,
@@ -176,6 +181,7 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
       vial_volume: vialVolume ? parseFloat(vialVolume) : null,
       process_config_id: processConfigId ? parseInt(processConfigId) : null,
       needs_review: initial?.needs_review ?? false,
+      barcode_code: barcodeCode.trim() || null,
     });
   };
 
@@ -386,6 +392,32 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
                 </div>
               </div>
             )}
+          </div>
+
+          {/* ── Sezione: Stato ───────────────────────────────────── */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="drug-enabled"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            <Label htmlFor="drug-enabled" className="text-xs cursor-pointer">Farmaco attivo</Label>
+          </div>
+
+          {/* ── Sezione: Barcode ─────────────────────────────────── */}
+          <div className="space-y-1.5">
+            <Label htmlFor="drug-barcode">
+              Barcode <span className="text-muted-foreground font-normal text-[11px]">(opzionale)</span>
+            </Label>
+            <Input
+              id="drug-barcode"
+              placeholder="Es. 8034173530041"
+              value={barcodeCode}
+              onChange={(e) => setBarcodeCode(e.target.value)}
+              className="font-mono"
+            />
           </div>
 
           {/* ── Sezione: Configurazione processo ─────────────────── */}

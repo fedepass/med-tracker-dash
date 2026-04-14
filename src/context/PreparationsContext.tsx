@@ -75,6 +75,11 @@ function mapPreparation(r: any): Preparation {
     drugCatalogConcentration: r.drug_catalog_concentration  ?? null,
     drugCatalogVialVolume:    r.drug_catalog_vial_volume != null ? Number(r.drug_catalog_vial_volume) : null,
     containerCatalogName:     r.container_catalog_name      ?? null,
+    currentProcessStepId: r.current_process_step_id ?? null,
+    processStepOrder:     r.process_step_order != null ? Number(r.process_step_order) : null,
+    processStepName:      r.process_step_name  ?? null,
+    processStepCode:      r.process_step_code  ?? null,
+    processStepsTotal:    r.process_steps_total != null ? Number(r.process_steps_total) : null,
   } as Preparation;
 }
 

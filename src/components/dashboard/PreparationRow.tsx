@@ -54,6 +54,10 @@ interface Preparation {
   };
   containerCatalogId?: number | null;
   containerCatalogName?: string | null;
+  currentProcessStepId?: number | null;
+  processStepOrder?: number | null;
+  processStepName?: string | null;
+  processStepsTotal?: number | null;
   volumeValue?: number | null;
   dispensed: number;
   dosageValue?: number | null;

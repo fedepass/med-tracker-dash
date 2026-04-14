@@ -33,6 +33,7 @@ export function ContainerDialog({ open, onClose, onSave, initial, title }: Conta
   const [solvent,       setSolvent]       = useState(initial?.solvent ?? "");
   const [containerType, setContainerType] = useState(initial?.container_type ?? "");
   const [enabled,       setEnabled]       = useState(initial?.enabled ?? true);
+  const [barcodeCode,   setBarcodeCode]   = useState(initial?.barcode_code ?? "");
 
   useEffect(() => {
     if (open) {
@@ -41,6 +42,7 @@ export function ContainerDialog({ open, onClose, onSave, initial, title }: Conta
       setSolvent(initial?.solvent ?? "");
       setContainerType(initial?.container_type ?? "");
       setEnabled(initial?.enabled ?? true);
+      setBarcodeCode(initial?.barcode_code ?? "");
     }
   }, [open, initial]);
 
@@ -52,6 +54,7 @@ export function ContainerDialog({ open, onClose, onSave, initial, title }: Conta
       container_type: containerType.trim() || null,
       enabled,
       needs_review: initial?.needs_review ?? false,
+      barcode_code: barcodeCode.trim() || null,
     });
   };
 
@@ -100,6 +103,10 @@ export function ContainerDialog({ open, onClose, onSave, initial, title }: Conta
                 <SelectItem value="APPI">Acqua per preparazioni iniettabili</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Barcode <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+            <Input className="h-8 text-sm font-mono" placeholder="Es. 8034173530041" value={barcodeCode} onChange={(e) => setBarcodeCode(e.target.value)} />
           </div>
           <div className="flex items-center gap-2">
             <input type="checkbox" id="cont-enabled" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-4 w-4 accent-primary" />
