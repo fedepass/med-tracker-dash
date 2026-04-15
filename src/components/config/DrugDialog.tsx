@@ -215,7 +215,6 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
             onApplyMedicinali={applyMedicinali}
           />
 
-          {/* ── Sezione: Concentrazione + nome composto ───────────── */}
           <div className="space-y-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Concentrazione e nome</p>
             <div className="grid grid-cols-2 gap-4">
@@ -240,7 +239,6 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
             </div>
           </div>
 
-          {/* ── Sezione: Classificazione e dati tecnici ───────────── */}
           <div className="space-y-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Classificazione e dati tecnici</p>
 
@@ -339,7 +337,6 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
             </div>
           </div>
 
-          {/* ── Sezione: Ricostituzione ───────────────────────────── */}
           <div className="rounded-md border border-border p-4 space-y-3">
             <label className="flex items-center gap-2.5 cursor-pointer select-none">
               <input
@@ -394,7 +391,6 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
             )}
           </div>
 
-          {/* ── Sezione: Stato ───────────────────────────────────── */}
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -406,7 +402,6 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
             <Label htmlFor="drug-enabled" className="text-xs cursor-pointer">Farmaco attivo</Label>
           </div>
 
-          {/* ── Sezione: Barcode ─────────────────────────────────── */}
           <div className="space-y-1.5">
             <Label htmlFor="drug-barcode">
               Barcode <span className="text-muted-foreground font-normal text-[11px]">(opzionale)</span>
@@ -420,7 +415,6 @@ export function DrugDialog({ open, onClose, onSave, initial, categories, title }
             />
           </div>
 
-          {/* ── Sezione: Configurazione processo ─────────────────── */}
           {processConfigs.length > 0 && (
             <div className="space-y-1.5">
               <Label>Configurazione processo</Label>

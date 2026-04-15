@@ -38,7 +38,7 @@ const DetailRow = ({ label, value, mono }: { label: string; value: string | null
 const PreparationDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { preparations, refreshPreparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation } = usePreparations();
+  const { preparations, refreshPreparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation, localValHistory } = usePreparations();
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [detailData, setDetailData] = useState<Preparation | null>(null);
   const [valHistory, setValHistory] = useState<Array<{
@@ -92,7 +92,7 @@ const PreparationDetail = () => {
       .then((r) => r.ok ? r.json() : [])
       .then((data) => setValHistory(Array.isArray(data) ? data : []))
       .catch(() => {});
-  }, [id]);
+  }, [id, preparations.find((p) => String(p.id) === id)?.validationStatus]);
 
   useEffect(() => {
     if (!id) return;
@@ -497,46 +497,64 @@ const PreparationDetail = () => {
             </section>
 
             {/* Validation History */}
-            <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                <History className="h-4 w-4 text-primary" /> Storico Validazione
-              </h2>
-              {valHistory.length === 0 ? (
-                <p className="py-2 text-center text-sm text-muted-foreground italic">Nessuna operazione registrata.</p>
-              ) : (
-                <ol className="relative border-l border-border ml-3 space-y-3">
-                  {valHistory.map((entry, i) => {
-                    const isLast = i === valHistory.length - 1;
-                    const dotColor =
-                      entry.action === "validata"  ? "bg-status-complete" :
-                      entry.action === "rifiutata" ? "bg-status-error"    :
-                      "bg-muted-foreground";
-                    const label =
-                      entry.action === "validata"  ? "Validata"  :
-                      entry.action === "rifiutata" ? "Rifiutata" :
-                      "Annullata";
-                    const textColor =
-                      entry.action === "validata"  ? "text-status-complete" :
-                      entry.action === "rifiutata" ? "text-status-error"    :
-                      "text-muted-foreground";
-                    const dt = new Date(entry.created_at);
-                    const dateStr = dt.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
-                    const timeStr = dt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-                    return (
-                      <li key={entry.id} className="ml-4">
-                        <span className={`absolute -left-1.5 mt-1 h-3 w-3 rounded-full border-2 border-card ${dotColor} ${isLast ? "ring-2 ring-offset-1 ring-offset-card ring-border" : ""}`} />
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className={`text-sm font-semibold ${textColor}`}>{label}</span>
-                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">{dateStr} {timeStr}</span>
-                        </div>
-                        {entry.reason && <p className="mt-0.5 text-xs text-muted-foreground">Motivo: {entry.reason}</p>}
-                        {entry.actor_name && <p className="mt-0.5 text-xs text-muted-foreground">Operatore: {entry.actor_name}</p>}
-                      </li>
-                    );
-                  })}
-                </ol>
-              )}
-            </section>
+            {(() => {
+              // Priorità: 1) storico API completo  2) storico locale sessione  3) sintetico da stato corrente
+              const local = (id ? (localValHistory[id] ?? []) : []);
+              const displayHistory: typeof valHistory =
+                valHistory.length > 0
+                  ? valHistory
+                  : local.length > 0
+                  ? local
+                  : prep?.validationStatus
+                  ? [{ id: -1, action: prep.validationStatus, reason: prep.rejectionReason ?? null, actor_name: null, created_at: new Date().toISOString() }]
+                  : [];
+
+              return (
+                <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <History className="h-4 w-4 text-primary" /> Storico Validazione
+                  </h2>
+                  {displayHistory.length === 0 ? (
+                    <p className="py-2 text-center text-sm text-muted-foreground italic">Nessuna operazione registrata.</p>
+                  ) : (
+                    <ol className="relative border-l border-border ml-3 space-y-3">
+                      {displayHistory.map((entry, i) => {
+                        const isLast = i === displayHistory.length - 1;
+                        const dotColor =
+                          entry.action === "validata"  ? "bg-status-complete" :
+                          entry.action === "rifiutata" ? "bg-status-error"    :
+                          "bg-muted-foreground";
+                        const label =
+                          entry.action === "validata"  ? "Validata"  :
+                          entry.action === "rifiutata" ? "Rifiutata" :
+                          "Annullata";
+                        const textColor =
+                          entry.action === "validata"  ? "text-status-complete" :
+                          entry.action === "rifiutata" ? "text-status-error"    :
+                          "text-muted-foreground";
+                        const dt = new Date(entry.created_at);
+                        const isSynthetic = entry.id === -1;
+                        const dateStr = isSynthetic ? null : dt.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
+                        const timeStr = isSynthetic ? null : dt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+                        return (
+                          <li key={entry.id} className="ml-4">
+                            <span className={`absolute -left-1.5 mt-1 h-3 w-3 rounded-full border-2 border-card ${dotColor} ${isLast ? "ring-2 ring-offset-1 ring-offset-card ring-border" : ""}`} />
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className={`text-sm font-semibold ${textColor}`}>{label}</span>
+                              {dateStr && timeStr && (
+                                <span className="text-[11px] text-muted-foreground whitespace-nowrap">{dateStr} {timeStr}</span>
+                              )}
+                            </div>
+                            {entry.reason && <p className="mt-0.5 text-xs text-muted-foreground">Motivo: {entry.reason}</p>}
+                            {entry.actor_name && <p className="mt-0.5 text-xs text-muted-foreground">Operatore: {entry.actor_name}</p>}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  )}
+                </section>
+              );
+            })()}
 
           </div>
         </div>

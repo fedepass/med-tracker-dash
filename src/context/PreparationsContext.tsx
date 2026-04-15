@@ -91,6 +91,14 @@ async function fetchPreparationsFromAPI(): Promise<Preparation[]> {
   return raw.map(mapPreparation);
 }
 
+export interface LocalValHistoryEntry {
+  id: number;
+  action: string;
+  reason: string | null;
+  actor_name: string | null;
+  created_at: string;
+}
+
 interface PreparationsContextType {
   preparations: Preparation[];
   refreshPreparations: () => Promise<void>;
@@ -107,6 +115,7 @@ interface PreparationsContextType {
   clearBarcodeSelection: () => void;
   tableSelected: Set<string>;
   setTableSelected: React.Dispatch<React.SetStateAction<Set<string>>>;
+  localValHistory: Record<string, LocalValHistoryEntry[]>;
 }
 
 const PreparationsContext = createContext<PreparationsContextType | null>(null);
@@ -121,6 +130,14 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
   const [preps, setPreps] = useState<Preparation[]>(initialPreparations);
   const [rejectionMap, setRejectionMap] = useState<Record<string, string>>({});
   const [previousStatusMap, setPreviousStatusMap] = useState<Record<string, Status>>({});
+  const [localValHistory, setLocalValHistory] = useState<Record<string, LocalValHistoryEntry[]>>({});
+
+  const appendLocalHistory = useCallback((id: string, action: string, reason: string | null = null) => {
+    setLocalValHistory((prev) => ({
+      ...prev,
+      [id]: [...(prev[id] ?? []), { id: -(Date.now()), action, reason, actor_name: null, created_at: new Date().toISOString() }],
+    }));
+  }, []);
   const [barcodeMode, setBarcodeMode] = useState<"detail" | "select">("detail");
   const [barcodeSelectedIds, setBarcodeSelectedIds] = useState<string[]>([]);
   const [tableSelected, setTableSelected] = useState<Set<string>>(new Set());
@@ -178,6 +195,7 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
 
   const validatePreparation = useCallback(async (id: string) => {
     setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: "validata" as const } : p)));
+    appendLocalHistory(id, "validata");
     try {
       const res = await extFetch(`/preparations/${id}`, {
         method: "PATCH",
@@ -190,11 +208,12 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
       // Revert optimistic update on failure
       setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: null } : p)));
     }
-  }, [refreshPreparations]);
+  }, [refreshPreparations, appendLocalHistory]);
 
   const rejectPreparation = useCallback(async (id: string, reason: RejectionReason) => {
     setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: "rifiutata" as const } : p)));
     setRejectionMap((prev) => ({ ...prev, [id]: reason }));
+    appendLocalHistory(id, "rifiutata", reason);
     try {
       const res = await extFetch(`/preparations/${id}`, {
         method: "PATCH",
@@ -208,7 +227,7 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
       setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: null } : p)));
       setRejectionMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
     }
-  }, [refreshPreparations]);
+  }, [refreshPreparations, appendLocalHistory]);
 
   const getRejectionReason = useCallback(
     (id: string) => rejectionMap[id],
@@ -228,6 +247,7 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
     const prev_prep = preps.find((p) => p.id === id);
     setPreps((prev) => prev.map((p) => (p.id === id ? { ...p, validationStatus: null } : p)));
     setRejectionMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    appendLocalHistory(id, "annullata");
     try {
       const res = await extFetch(`/preparations/${id}`, {
         method: "PATCH",
@@ -243,7 +263,7 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
         if (prev_prep.rejectionReason) setRejectionMap((prev) => ({ ...prev, [id]: prev_prep.rejectionReason! }));
       }
     }
-  }, [refreshPreparations, preps]);
+  }, [refreshPreparations, preps, appendLocalHistory]);
 
   return (
     <PreparationsContext.Provider value={{
@@ -251,6 +271,7 @@ export const PreparationsProvider = ({ children }: { children: ReactNode }) => {
       reassignCappa, cappe,
       barcodeMode, toggleBarcodeMode, barcodeSelectedIds, addBarcodeSelection, clearBarcodeSelection,
       tableSelected, setTableSelected,
+      localValHistory,
     }}>
       {children}
     </PreparationsContext.Provider>

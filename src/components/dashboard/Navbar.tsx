@@ -21,12 +21,6 @@ const ANALYTICS_ITEMS = [
   { label: "Dashboard Analytics",  to: "/analytics",  icon: TrendingUp, desc: "Statistiche e grafici" },
 ];
 
-interface DropdownMenuProps {
-  open: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}
-
 function DropdownPanel({ open, children }: { open: boolean; children: React.ReactNode }) {
   return (
     <div
@@ -39,6 +33,11 @@ function DropdownPanel({ open, children }: { open: boolean; children: React.Reac
       {children}
     </div>
   );
+}
+
+function initials(name: string | null | undefined): string {
+  if (!name) return "U";
+  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
 const Navbar = () => {
@@ -135,7 +134,6 @@ const Navbar = () => {
           </div>
 
           <nav className="hidden md:flex items-center gap-1 ml-4">
-            {/* Preparazioni */}
             <Link
               to="/"
               className={cn(
@@ -146,8 +144,7 @@ const Navbar = () => {
               <Home className="h-4 w-4" /> Preparazioni
             </Link>
 
-            {/* Analytics dropdown */}
-            <div className="relative" ref={analyticsRef}>
+              <div className="relative" ref={analyticsRef}>
               <button
                 onClick={() => setOpenMenu(openMenu === "analytics" ? null : "analytics")}
                 className={cn(
@@ -182,7 +179,6 @@ const Navbar = () => {
               </DropdownPanel>
             </div>
 
-            {/* Config dropdown (admin only) */}
             {isAdmin && (
               <div className="relative" ref={configRef}>
                 <button
@@ -228,7 +224,6 @@ const Navbar = () => {
           </nav>
         </div>
 
-        {/* Barcode search */}
         <div className="hidden md:flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -272,7 +267,6 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Hamburger mobile */}
           <button
             className="md:hidden flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             onClick={() => setMobileOpen((v) => !v)}
@@ -284,7 +278,7 @@ const Navbar = () => {
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">
               <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
-                {displayName ? displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'U'}
+                {initials(displayName)}
               </AvatarFallback>
             </Avatar>
             <div className="hidden md:block">
@@ -295,12 +289,9 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-navbar">
           <nav className="flex flex-col p-3 gap-0.5">
-
-            {/* Preparazioni */}
             <Link
               to="/"
               className={cn(
@@ -311,7 +302,6 @@ const Navbar = () => {
               <Home className="h-4 w-4 shrink-0" /> Preparazioni
             </Link>
 
-            {/* Analytics */}
             <button
               onClick={() => setMobileSection(mobileSection === "analytics" ? null : "analytics")}
               className={cn(
@@ -336,7 +326,6 @@ const Navbar = () => {
               </div>
             )}
 
-            {/* Config */}
             {isAdmin && (
               <>
                 <button
@@ -371,11 +360,10 @@ const Navbar = () => {
               </>
             )}
 
-            {/* User info mobile */}
             <div className="mt-2 pt-2 border-t border-border px-3 flex items-center gap-3">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
-                  {displayName ? displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'U'}
+                  {initials(displayName)}
                 </AvatarFallback>
               </Avatar>
               <div>

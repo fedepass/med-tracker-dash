@@ -23,6 +23,10 @@ function parseRequestedAt(s: string | null): number {
   return new Date(`${y}-${m}-${d}T${timePart ?? "00:00"}:00`).getTime();
 }
 
+function readSS(key: string) {
+  try { return JSON.parse(sessionStorage.getItem(key) ?? "{}"); } catch { return {}; }
+}
+
 interface PreparationsTableProps {
   mode: "active" | "archived";
   statusFilter?: Status | null;
@@ -35,16 +39,14 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
   const { preparations, validatePreparation, rejectPreparation, getRejectionReason, undoPreparation, barcodeSelectedIds, tableSelected: selected, setTableSelected: setSelected } = usePreparations();
 
   const SS_KEY = `table_state_${mode}`;
-  const saved = (() => { try { return JSON.parse(sessionStorage.getItem(SS_KEY) ?? "{}"); } catch { return {}; } })();
-
-  const [search, setSearch] = useState<string>(saved.search ?? "");
-  const [sortKey, setSortKey] = useState<SortKey | null>(saved.sortKey ?? null);
-  const [sortDir, setSortDir] = useState<SortDir>(saved.sortDir ?? "asc");
+  const [search, setSearch] = useState<string>(() => readSS(SS_KEY).search ?? "");
+  const [sortKey, setSortKey] = useState<SortKey | null>(() => readSS(SS_KEY).sortKey ?? null);
+  const [sortDir, setSortDir] = useState<SortDir>(() => readSS(SS_KEY).sortDir ?? "asc");
+  const [currentPage, setCurrentPage] = useState<number>(() => readSS(SS_KEY).currentPage ?? 1);
+  const [pageSize, setPageSize] = useState<number>(() => readSS(SS_KEY).pageSize ?? 10);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTargetIds, setRejectTargetIds] = useState<string[]>([]);
   const [rejectDefaultReason, setRejectDefaultReason] = useState<RejectionReason | undefined>(undefined);
-  const [currentPage, setCurrentPage] = useState<number>(saved.currentPage ?? 1);
-  const [pageSize, setPageSize] = useState<number>(saved.pageSize ?? 10);
   const [assignmentSteps, setAssignmentSteps] = useState<{ strategy: string; logic_op: string; enabled: boolean }[]>(
     [{ strategy: "urgency", logic_op: "AND", enabled: true }]
   );
@@ -125,23 +127,26 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
       const drugPriorityStep = activeSteps.find((s) => s.strategy === "drug_priority");
       const otherSteps = activeSteps.filter((s) => s.strategy !== "drug_priority");
 
-      const getDrugRank = (p: typeof filtered[0]): number => {
-        const activeRules = drugPriorityRules.filter((r) => r.enabled);
-        const matched = activeRules.filter((r) =>
-          r.rule_type === "drug"
-            ? p.drug?.toLowerCase().includes(r.value.toLowerCase())
-            : (p.drugCategory ?? "").toLowerCase().startsWith(r.value.toLowerCase())
-        );
-        return matched.length > 0 ? Math.min(...matched.map((r) => r.priority)) : 9999;
-      };
+      // Pre-compute drug rank once per item instead of inside the comparator
+      const activeRules = drugPriorityRules.filter((r) => r.enabled);
+      const rankMap = drugPriorityStep
+        ? new Map(filtered.map((p) => {
+            const matched = activeRules.filter((r) =>
+              r.rule_type === "drug"
+                ? p.drug?.toLowerCase().includes(r.value.toLowerCase())
+                : (p.drugCategory ?? "").toLowerCase().startsWith(r.value.toLowerCase())
+            );
+            return [p.id, matched.length > 0 ? Math.min(...matched.map((r) => r.priority)) : 9999];
+          }))
+        : null;
 
       return [...filtered].sort((a, b) => {
-        // drug_priority applicato sempre come sort primario se lo step è attivo
-        if (drugPriorityStep) {
-          const rankDiff = getDrugRank(a) - getDrugRank(b);
+        // drug_priority applied as primary sort when the step is active
+        if (rankMap) {
+          const rankDiff = (rankMap.get(a.id) ?? 9999) - (rankMap.get(b.id) ?? 9999);
           if (rankDiff !== 0) return rankDiff;
         }
-        // Altri step in ordine configurato (tiebreaker all'interno dello stesso rank)
+        // Other steps in configured order (tiebreaker within same rank)
         for (const step of otherSteps) {
           let cmp = 0;
           switch (step.strategy) {
@@ -207,10 +212,23 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
 
   const thClass = "px-3 py-1.5 cursor-pointer select-none hover:text-foreground transition-colors";
 
-  // ── Empty state ──────────────────────────────────────────────────────────
   if (sorted.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card shadow-sm">
+        {search && (
+          <div className="flex justify-end border-b border-border px-5 py-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Cerca..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 w-48 bg-secondary pl-8"
+                autoFocus
+              />
+            </div>
+          </div>
+        )}
         <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
             <PackageOpen className="h-7 w-7 text-muted-foreground" />
@@ -240,7 +258,6 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
 
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
-      {/* Header */}
       <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {mode === "active" && (
@@ -287,7 +304,6 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
         </div>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[800px]">
           <thead>
@@ -347,7 +363,6 @@ const PreparationsTable = ({ mode, statusFilter, validationFilter, dateFrom, dat
         </table>
       </div>
 
-      {/* Footer / Pagination */}
       <div className="flex flex-col items-center justify-between gap-3 border-t border-border px-5 py-3 sm:flex-row">
         <div className="flex items-center gap-3">
           <p className="text-xs text-muted-foreground">

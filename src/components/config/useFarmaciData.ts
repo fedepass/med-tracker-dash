@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { extFetch } from "@/lib/apiClient";
 import { usePreparations } from "@/context/PreparationsContext";
@@ -247,13 +247,13 @@ export function useFarmaciData(): UseFarmaciDataReturn {
     }
   };
 
-  const filteredDrugs = drugs.filter((d) => {
+  const filteredDrugs = useMemo(() => drugs.filter((d) => {
     const q = drugSearch.toLowerCase();
     const matchesSearch = !q || d.name.toLowerCase().includes(q) || (d.code ?? "").toLowerCase().includes(q)
       || (d.aic_code ?? "").toLowerCase().includes(q) || (d.category ?? "").toLowerCase().includes(q);
     const matchesCategory = !categoryFilter || (d.category ?? "") === categoryFilter;
     return matchesSearch && matchesCategory;
-  });
+  }), [drugs, drugSearch, categoryFilter]);
 
   return {
     drugs,
