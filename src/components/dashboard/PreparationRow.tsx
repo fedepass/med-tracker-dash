@@ -173,33 +173,26 @@ export function PreparationRow({
       </td>
       <td className="px-3 py-1.5">
         {(() => {
-          let dispensedLine: React.ReactNode = null;
-          if (p.dispensed > 0) {
-            const { value, unit } = calcDispensedDisplay(
-              p.dispensed,
-              p.dosageUnit,
-              p.drugCatalogConcentration,
-              p.drugCatalogVialVolume,
-              p.specificGravity,
-            );
-            dispensedLine = (
+          const dispensedMl = p.dispensed ?? 0;
+          const { value, unit } = calcDispensedDisplay(
+            dispensedMl,
+            p.dosageUnit,
+            p.drugCatalogConcentration,
+            p.drugCatalogVialVolume,
+            p.specificGravity,
+          );
+          return (
+            <div>
               <p className="text-sm font-medium text-foreground">
                 {value} {unit}
-                {p.dosageValue != null && p.dosageUnit && (
-                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                    / {p.dosageValue} {p.dosageUnit}
-                  </span>
-                )}
               </p>
-            );
-          }
-          const richiestiLine = !dispensedLine && p.dosageValue != null && p.dosageUnit ? (
-            <p className="text-sm text-muted-foreground">
-              {p.dosageValue} {p.dosageUnit}
-            </p>
-          ) : null;
-          if (!dispensedLine && !richiestiLine) return <span className="text-muted-foreground">—</span>;
-          return <>{dispensedLine}{richiestiLine}</>;
+              {p.dosageValue != null && p.dosageUnit && (
+                <p className="text-xs text-muted-foreground">
+                  / {p.dosageValue} {p.dosageUnit}
+                </p>
+              )}
+            </div>
+          );
         })()}
       </td>
       <td className="px-3 py-1.5">
